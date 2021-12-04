@@ -137,5 +137,5 @@ test('no win', () => {
     board.from_array(EXPECTED_BOARD);
     EXPECTED_BALLS.forEach(b => board.play(b));
     expect(board.num_plays).toBe(EXPECTED_BALLS.length);
-    expect(board.score).toBe(0);
+    expect(board.score).toBe(-1);
 });
