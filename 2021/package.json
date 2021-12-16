@@ -4,5 +4,8 @@
     },
     "scripts": {
         "test": "jest"
+    },
+    "dependencies": {
+        "@datastructures-js/priority-queue": "datastructures-js/priority-queue"
     }
 }
