@@ -58,11 +58,11 @@ fn parse_rucksacks(input: &str) -> Vec<Rucksack> {
 fn find_badge(groups: &[Rucksack]) -> char {
     let mut sets: Vec<HashSet<char>> = Vec::new();
     for group in groups.iter() {
-        sets.push(HashSet::from(group.all.chars().collect::<HashSet<char>>()));
+        sets.push(group.all.chars().collect::<HashSet<char>>());
     }
     let mut acc = sets[0].clone();
     for set in sets.iter().skip(1) {
-        acc = &acc & &set;
+        acc = &acc & set;
     }
     *acc.iter().next().expect("missing badge")
 }
