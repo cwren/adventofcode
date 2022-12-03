@@ -25,19 +25,17 @@ fn main() {
     let reader = BufReader::new(f);
     let mut elves = Vec::new();
     let mut elf = new_elf();
-    for line in reader.lines() {
-        if let Ok(snack) = line {
-            if snack.len() == 0 {
-                elves.push(elf);
-                elf = new_elf();
-            } else {
-                let calories: u32 = snack.trim().parse()
-                    .expect("Not a Number");
-                elf.snacks.push(calories);
-            }
+    for snack in reader.lines().flatten() {
+        if snack.is_empty() {
+            elves.push(elf);
+            elf = new_elf();
+        } else {
+            let calories: u32 = snack.trim().parse()
+                .expect("Not a Number");
+            elf.snacks.push(calories);
         }
     }
-    if elf.snacks.len() > 0 {
+    if !elf.snacks.is_empty() {
         elves.push(elf);
     }
     let mut inventory: Vec<u32> = elves.iter().map(|elf| { elf.total_snacks() }).collect();
@@ -47,3 +45,11 @@ fn main() {
     inventory.reverse();
     println!("top 3 is {:?}", inventory[0..3].iter().sum::<u32>());
 }   
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn exploration() {
+        assert_eq!(2 + 2, 4);
+    }
+}
