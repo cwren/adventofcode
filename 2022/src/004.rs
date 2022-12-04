@@ -10,6 +10,12 @@ fn contained_in(a: &Job, b: &Job) -> bool {
     a.0 >= b.0 && a.1 <= b.1
 }
 
+fn overlapping(a: &Job, b: &Job) -> bool {
+    (a.0 <= b.0 && a.1 >= b.0) ||
+    (a.0 <= b.1 && a.1 >= b.1) ||
+    (a.0 <= b.1 && a.1 >= b.0) 
+}
+
 fn parse_jobs(input: &str) -> Vec<ElfPair> {
     let elf_pair_re: regex::Regex= Regex::new(ELF_PAIR_RE).unwrap();
     let mut jobs = Vec::new();
@@ -41,7 +47,14 @@ fn main() {
         .filter(|b|*b)
         .collect::<Vec<bool>>()
         .len();
-    println!("{:?}", count)
+    println!("contains: {:?}", count);
+
+    let count = jobs.iter()
+        .map(|j| overlapping(&j.0, &j.1))
+        .filter(|b|*b)
+        .collect::<Vec<bool>>()
+        .len();
+    println!("overlaps: {:?}", count);
 }
 
 #[cfg(test)]
@@ -85,6 +98,28 @@ mod tests {
             .collect::<Vec<bool>>()
             .len();
         assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_overlapping() {
+        let jobs = parse_jobs(SAMPLE);
+        assert_eq!(overlapping(&jobs[0].1, &jobs[0].0), false);
+        assert_eq!(overlapping(&jobs[1].0, &jobs[1].1), false);
+        assert_eq!(overlapping(&jobs[2].1, &jobs[2].0), true);
+        assert_eq!(overlapping(&jobs[3].1, &jobs[3].0), true);
+        assert_eq!(overlapping(&jobs[4].1, &jobs[4].0), true);
+        assert_eq!(overlapping(&jobs[5].1, &jobs[5].0), true);
+    }
+
+    #[test]
+    fn test_count_overlaps() {
+        let jobs = parse_jobs(SAMPLE);
+        let count = jobs.iter()
+            .map(|j| overlapping(&j.0, &j.1))
+            .filter(|b|*b)
+            .collect::<Vec<bool>>()
+            .len();
+        assert_eq!(count, 4);
     }
 
     #[test]
