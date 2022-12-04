@@ -1,9 +1,9 @@
+use std::collections::HashSet;
 use std::panic;
 use std::{fs::File, io::Read};
-use std::collections::HashSet;
 
 #[derive(Debug)]
-struct Rucksack { 
+struct Rucksack {
     all: String,
     front: String,
     back: String,
@@ -14,8 +14,8 @@ impl Rucksack {
         let n = value.len();
         Self {
             all: value.to_string(),
-            front: value[0..n/2].to_string(),
-            back: value[n/2..].to_string(),
+            front: value[0..n / 2].to_string(),
+            back: value[n / 2..].to_string(),
         }
     }
 
@@ -25,7 +25,9 @@ impl Rucksack {
             front_set.insert(c);
         }
         for c in self.back.chars() {
-            if front_set.contains(&c) { return c }
+            if front_set.contains(&c) {
+                return c;
+            }
         }
         panic!("none")
     }
@@ -35,7 +37,7 @@ fn priority(c: char) -> u32 {
     match c {
         'A'..='Z' => c as u32 - 'A' as u32 + 27,
         'a'..='z' => c as u32 - 'a' as u32 + 1,
-        _ => panic!(r#"invalid item"#)
+        _ => panic!(r#"invalid item"#),
     }
 }
 
@@ -46,7 +48,7 @@ fn total_priority(rucksacks: &[Rucksack]) -> u32 {
 fn parse_rucksacks(input: &str) -> Vec<Rucksack> {
     let mut rucksacks = Vec::new();
     for line in input.lines() {
-        if line.len() %2 != 0 {
+        if line.len() % 2 != 0 {
             panic!("Line is not an even length: {line}");
         } else {
             rucksacks.push(Rucksack::new(line));
@@ -70,7 +72,7 @@ fn find_badge(groups: &[Rucksack]) -> char {
 fn compute_group_priorities(rucksacks: &[Rucksack]) -> u32 {
     let mut badges = Vec::new();
     for i in (0..rucksacks.len()).step_by(3) {
-        badges.push(find_badge(&rucksacks[i..i+3]));
+        badges.push(find_badge(&rucksacks[i..i + 3]));
     }
     let mut total = 0;
     for badge in badges {
@@ -99,7 +101,7 @@ PmmdzqPrVvPwwTWBwg
 wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
 ttgJtRGJQctTZtZT
 CrZsJsPPZsGzwwsLwLmpwMDw"#;
-    
+
     #[test]
     fn test_parse() {
         let rucksacks = parse_rucksacks(SAMPLE);
@@ -160,5 +162,4 @@ CrZsJsPPZsGzwwsLwLmpwMDw"#;
         let rucksacks = parse_rucksacks(SAMPLE);
         assert_eq!(compute_group_priorities(&rucksacks), 70);
     }
-
 }
