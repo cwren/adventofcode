@@ -45,15 +45,13 @@ fn main() {
     let count = jobs.iter()
         .map(|j| contained_in(&j.0, &j.1) || contained_in(&j.1, &j.0))
         .filter(|b|*b)
-        .collect::<Vec<bool>>()
-        .len();
+        .count();
     println!("contains: {:?}", count);
 
     let count = jobs.iter()
         .map(|j| overlapping(&j.0, &j.1))
         .filter(|b|*b)
-        .collect::<Vec<bool>>()
-        .len();
+        .count();
     println!("overlaps: {:?}", count);
 }
 
