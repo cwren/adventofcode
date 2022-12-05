@@ -11,8 +11,7 @@ struct Move {
 fn parse_crates(input: &str) -> (Vec<Crate>, usize) {
     let mut n = 0;
     for (i, line) in input.lines().enumerate() {
-        println!("{line}");
-        if line.len() == 0 {
+        if line.is_empty() {
             n = i;
             break;
         }
@@ -29,11 +28,11 @@ fn parse_crates(input: &str) -> (Vec<Crate>, usize) {
     }
    
     for line in input.lines() {
-        if line.contains("[") {
-            for i in 0..num_columns {
+        if line.contains('[') {
+            for (i, stack) in crates.iter_mut().enumerate() {
                 if let Some(c) = line.chars().nth(4 * i + 1) {
                     if c != ' ' {
-                        crates[i].push(c);
+                        stack.push(c);
                     }
                 }
             }
@@ -42,8 +41,8 @@ fn parse_crates(input: &str) -> (Vec<Crate>, usize) {
         }
     }
 
-    for i in 0..num_columns {
-        crates[i].reverse();
+    for stack in crates.iter_mut() {
+        stack.reverse();
     }
     (crates, n + 1)
 }
@@ -69,7 +68,7 @@ fn parse_crates_and_moves(input: &str) -> (Vec<Crate>, Vec<Move>) {
     (crates, moves)
 }
 
-fn execute_9000(moves: &Vec<Move>, crates: &mut Vec<Crate>) {
+fn execute_9000(moves: &Vec<Move>, crates: &mut [Crate]) {
     for m in moves {
         for _ in 0..m.n {
             let c = crates[m.from].pop().unwrap();
@@ -78,7 +77,7 @@ fn execute_9000(moves: &Vec<Move>, crates: &mut Vec<Crate>) {
     }
 }
 
-fn execute_9001(moves: &Vec<Move>, crates: &mut Vec<Crate>) {
+fn execute_9001(moves: &Vec<Move>, crates: &mut [Crate]) {
     for m in moves {
         let n = crates[m.from].len();
         let cargo = crates[m.from].split_off(n - m.n);
