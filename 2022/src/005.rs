@@ -26,7 +26,7 @@ fn parse_crates(input: &str) -> (Vec<Crate>, usize) {
     for _ in 0..num_columns {
         crates.push(Vec::new());
     }
-   
+
     for line in input.lines() {
         if line.contains('[') {
             for (i, stack) in crates.iter_mut().enumerate() {
