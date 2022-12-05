@@ -3,7 +3,7 @@ use std::{fs::File, io::Read};
 
 type Crate = Vec::<char>;
 struct Move {
-    n: u32,
+    n: usize,
     from: usize,
     to: usize,
 }
@@ -56,8 +56,8 @@ fn parse_moves(input: &str, n: usize) -> Vec<Move> {
         let caps = move_re.captures(line).unwrap();
         moves.push(Move {
             n: caps.get(1).unwrap().as_str().parse().unwrap(),
-            from: caps.get(2).unwrap().as_str().parse().unwrap(),
-            to: caps.get(3).unwrap().as_str().parse().unwrap(),
+            from: caps.get(2).unwrap().as_str().parse::<usize>().unwrap() - 1,
+            to: caps.get(3).unwrap().as_str().parse::<usize>().unwrap() - 1,
         });
     }
     moves
@@ -72,8 +72,18 @@ fn parse_crates_and_moves(input: &str) -> (Vec<Crate>, Vec<Move>) {
 fn execute_9000(moves: &Vec<Move>, crates: &mut Vec<Crate>) {
     for m in moves {
         for _ in 0..m.n {
-            let c = crates[m.from - 1].pop().unwrap();
-            crates[m.to - 1].push(c);
+            let c = crates[m.from].pop().unwrap();
+            crates[m.to].push(c);
+        }
+    }
+}
+
+fn execute_9001(moves: &Vec<Move>, crates: &mut Vec<Crate>) {
+    for m in moves {
+        let n = crates[m.from].len();
+        let cargo = crates[m.from].split_off(n - m.n);
+        for c in cargo {
+            crates[m.to].push(c);
         }
     }
 }
@@ -86,12 +96,21 @@ fn main() {
     let (mut crates, moves) = parse_crates_and_moves(&input);
     println!("moves: {:?}", moves.len());
 
+    let mut saved_crates = crates.clone();
+
     execute_9000(&moves, &mut crates);
     let mut output = String::new();
     for stack in crates {
         output.push(*stack.last().unwrap());
     }
-    println!("top of stacks: {output}");
+    println!("9000 top of stacks: {output}");
+
+    execute_9001(&moves, &mut saved_crates);
+    let mut output = String::new();
+    for stack in saved_crates {
+        output.push(*stack.last().unwrap());
+    }
+    println!("9001 top of stacks: {output}");
 }
 
 #[cfg(test)]
@@ -122,19 +141,28 @@ move 1 from 1 to 2"#;
         let moves = parse_moves(SAMPLE, 5);
         assert_eq!(moves.len(), 4);
         assert_eq!(moves[1].n, 3);
-        assert_eq!(moves[1].from, 1);
-        assert_eq!(moves[1].to, 3);
+        assert_eq!(moves[1].from, 0);
+        assert_eq!(moves[1].to, 2);
         assert_eq!(moves[2].n, 2);
-        assert_eq!(moves[2].from, 2);
-        assert_eq!(moves[2].to, 1);
+        assert_eq!(moves[2].from, 1);
+        assert_eq!(moves[2].to, 0);
     }
 
     #[test]
     fn test_execute_9000() {
-        let (mut crates, moves) = parse_crates_and_moves(SAMPLE);    
+        let (mut crates, moves) = parse_crates_and_moves(SAMPLE);
         execute_9000(&moves, &mut crates);
         assert_eq!(crates[0].last().unwrap(), &'C');
         assert_eq!(crates[1].last().unwrap(), &'M');
         assert_eq!(crates[2].last().unwrap(), &'Z');
+    }
+
+    #[test]
+    fn test_execute_9001() {
+        let (mut crates, moves) = parse_crates_and_moves(SAMPLE);
+        execute_9001(&moves, &mut crates);
+        assert_eq!(crates[0].last().unwrap(), &'M');
+        assert_eq!(crates[1].last().unwrap(), &'C');
+        assert_eq!(crates[2].last().unwrap(), &'D');
     }
 }
