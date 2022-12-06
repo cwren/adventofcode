@@ -2,8 +2,8 @@ use std::collections::VecDeque;
 use std::{fs::File, io::Read};
 
 fn all_different(v: &VecDeque<char>) -> bool {
-    for c in v.iter() {
-        let n = v.iter().filter(|d| d == &c).count();
+    for (i, c) in v.iter().enumerate() {
+        let n = v.iter().skip(i).filter(|d| d == &c).count();
         if n > 1 {
             return false;
         }
