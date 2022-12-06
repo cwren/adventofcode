@@ -1,11 +1,11 @@
-use std::{fs::File, io::Read};
 use std::collections::VecDeque;
+use std::{fs::File, io::Read};
 
-fn all_different (v: &VecDeque<char>) -> bool {
+fn all_different(v: &VecDeque<char>) -> bool {
     for c in v.iter() {
         let n = v.iter().filter(|d| d == &c).count();
         if n > 1 {
-            return false
+            return false;
         }
     }
     true
@@ -19,7 +19,7 @@ fn find_marker(input: &str, w: usize) -> usize {
             window.pop_front();
         }
         if window.len() == w && all_different(&window) {
-            return i + 1
+            return i + 1;
         }
     }
     0
