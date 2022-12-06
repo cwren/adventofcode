@@ -23,5 +23,9 @@ path = "src/004.rs"
 name = "005"
 path = "src/005.rs"
 
+[[bin]]
+name = "006"
+path = "src/006.rs"
+
 [dependencies]
 regex = "1"
