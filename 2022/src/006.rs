@@ -11,18 +11,26 @@ fn all_different (v: &VecDeque<char>) -> bool {
     true
 }
 
-fn find_marker(input: &str) -> usize {
+fn find_marker(input: &str, w: usize) -> usize {
     let mut window = VecDeque::new();
     for (i, c) in input.chars().enumerate() {
         window.push_back(c);
-        while window.len() > 4 {
+        while window.len() > w {
             window.pop_front();
         }
-        if window.len() == 4 && all_different(&window) {
+        if window.len() == w && all_different(&window) {
             return i + 1
         }
     }
     0
+}
+
+fn find_packet(input: &str) -> usize {
+    find_marker(input, 4)
+}
+
+fn find_message(input: &str) -> usize {
+    find_marker(input, 14)
 }
 
 fn main() {
@@ -30,7 +38,8 @@ fn main() {
     let mut input = String::new();
     f.read_to_string(&mut input).expect("File Read Error");
 
-    println!("first start: {}", find_marker(&input));
+    println!("first packet: {}", find_packet(&input));
+    println!("first message: {}", find_message(&input));
 }
 
 #[cfg(test)]
@@ -38,11 +47,20 @@ mod tests {
     use crate::*;
 
     #[test]
-    fn test_find_start() {
-        assert_eq!(find_marker("mjqjpqmgbljsphdztnvjfqwrcgsmlb"), 7);
-        assert_eq!(find_marker("bvwbjplbgvbhsrlpgdmjqwftvncz"), 5);
-        assert_eq!(find_marker("nppdvjthqldpwncqszvftbrmjlhg"), 6);
-        assert_eq!(find_marker("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"), 10);
-        assert_eq!(find_marker("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"), 11);
+    fn test_find_packet() {
+        assert_eq!(find_packet("mjqjpqmgbljsphdztnvjfqwrcgsmlb"), 7);
+        assert_eq!(find_packet("bvwbjplbgvbhsrlpgdmjqwftvncz"), 5);
+        assert_eq!(find_packet("nppdvjthqldpwncqszvftbrmjlhg"), 6);
+        assert_eq!(find_packet("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"), 10);
+        assert_eq!(find_packet("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"), 11);
+    }
+
+    #[test]
+    fn test_find_message() {
+        assert_eq!(find_message("mjqjpqmgbljsphdztnvjfqwrcgsmlb"), 19);
+        assert_eq!(find_message("bvwbjplbgvbhsrlpgdmjqwftvncz"), 23);
+        assert_eq!(find_message("nppdvjthqldpwncqszvftbrmjlhg"), 23);
+        assert_eq!(find_message("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"), 29);
+        assert_eq!(find_message("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"), 26);
     }
 }
