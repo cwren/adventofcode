@@ -1,13 +1,13 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{collections::HashMap, fs::File, hash::Hash, hash::Hasher, io::Read};
+use std::{collections::HashMap, hash::Hash, hash::Hasher, io::Read};
 
 #[derive(Clone, Debug, PartialEq)]
 enum NodeFlavor {
-    DIR,
-    FILE,
+    Dir,
+    File,
 }
-use crate::NodeFlavor::{DIR, FILE};
+use crate::NodeFlavor::{Dir, File};
 
 #[derive(Clone, Debug)] 
 struct Node {
@@ -35,17 +35,17 @@ type Filesystem = HashMap<String, Node>;
 impl Node {
     fn size(&self, fs: &Filesystem) -> usize {
         match self.flavor {
-            NodeFlavor::FILE => self.size,
-            NodeFlavor::DIR => self.children.iter().map(|n| fs.get(n).expect("missing node!").size(fs)).sum(),
+            NodeFlavor::File => self.size,
+            NodeFlavor::Dir => self.children.iter().map(|n| fs.get(n).expect("missing node!").size(fs)).sum(),
         }
     }
 
     fn make_file(name: &str, size: usize) -> Node {
-        Node {flavor: FILE, name: name.to_string(), size: size, children: Vec::new()}
+        Node {flavor: File, name: name.to_string(), size, children: Vec::new()}
     }
 
     fn make_dir(name: &str) -> Node {
-        Node {flavor: DIR, name: name.to_string(), size: 0, children: Vec::new()}
+        Node {flavor: Dir, name: name.to_string(), size: 0, children: Vec::new()}
     }
     
 }
@@ -89,7 +89,7 @@ fn parse_log_line(log: &str) -> Log {
 fn up_from(cwd :&str) -> String {
     if let Some(i) = cwd.rfind('/') {
         let (a, _) = cwd.split_at(i);
-        if a.len() > 0 {
+        if !a.is_empty() {
             return a.to_string();
         } else {
             return String::from("/");
@@ -139,8 +139,8 @@ fn parse_logs(input: &str) -> Filesystem {
 
 fn part_1(fs: &HashMap<String, Node>) -> usize{
     fs.iter()
-        .filter(|n| n.1.flavor == NodeFlavor::DIR && n.1.size(&fs) <= 100000)
-        .map(|n| n.1.size(&fs)).sum()
+        .filter(|n| n.1.flavor == NodeFlavor::Dir && n.1.size(fs) <= 100000)
+        .map(|n| n.1.size(fs)).sum()
 }
 
 fn part_2(fs: &HashMap<String, Node>) -> usize{
@@ -149,15 +149,15 @@ fn part_2(fs: &HashMap<String, Node>) -> usize{
     let goal = 30000000 - free;
     assert!(goal > 0);
     let mut candidates = fs.iter()
-        .filter(|n| n.1.flavor == NodeFlavor::DIR && n.1.size(&fs) > goal)
+        .filter(|n| n.1.flavor == NodeFlavor::Dir && n.1.size(fs) > goal)
         .map(|n| n.1)
         .collect::<Vec<&Node>>();
-    candidates.sort_by(|a, b| a.size(&fs).partial_cmp(&b.size(&fs)).unwrap());
-    candidates.first().expect("no candidates found").size(&fs)
+    candidates.sort_by(|a, b| a.size(fs).partial_cmp(&b.size(fs)).unwrap());
+    candidates.first().expect("no candidates found").size(fs)
 }
 
 fn main() {
-    let mut f = File::open("input/007.txt").expect("File Error");
+    let mut f = std::fs::File::open("input/007.txt").expect("File Error");
     let mut input = String::new();
     f.read_to_string(&mut input).expect("File Read Error");
     
