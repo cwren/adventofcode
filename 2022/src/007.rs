@@ -77,42 +77,43 @@ lazy_static! {
     static ref DIR_RE: regex::Regex = Regex::new(r"^dir ([/a-zA-Z0-9]+)$").unwrap();
     static ref FILE_RE: regex::Regex = Regex::new(r"^([0-9]+) ([/a-zA-Z0-9.]+)$").unwrap();
 }
-
-fn parse_log_line(log: &str) -> Log {
-    if LS_RE.is_match(log) {
-        return Log::LS;
-    } else if CD_RE.is_match(log) {
-        let cap = CD_RE.captures(log).expect("directory capture failure");
-        let name = cap
-            .get(1)
-            .expect("missing change directory capture")
-            .as_str()
-            .to_string();
-        return Log::CD(name);
-    } else if DIR_RE.is_match(log) {
-        let cap = DIR_RE.captures(log).expect("directory capture failure");
-        let name = cap
-            .get(1)
-            .expect("missing directory name capture")
-            .as_str()
-            .to_string();
-        return Log::DIR(name);
-    } else if FILE_RE.is_match(log) {
-        let cap = FILE_RE.captures(log).expect("file capture failure");
-        let name = cap
-            .get(2)
-            .expect("missing file name capture")
-            .as_str()
-            .to_string();
-        let size = cap
-            .get(1)
-            .unwrap()
-            .as_str()
-            .parse()
-            .expect("failed to parse file size");
-        return Log::FILE(name, size);
+impl From<&str> for Log {
+    fn from(log: &str) -> Self {
+        if LS_RE.is_match(log) {
+            return Log::LS;
+        } else if CD_RE.is_match(log) {
+            let cap = CD_RE.captures(log).expect("directory capture failure");
+            let name = cap
+                .get(1)
+                .expect("missing change directory capture")
+                .as_str()
+                .to_string();
+            return Log::CD(name);
+        } else if DIR_RE.is_match(log) {
+            let cap = DIR_RE.captures(log).expect("directory capture failure");
+            let name = cap
+                .get(1)
+                .expect("missing directory name capture")
+                .as_str()
+                .to_string();
+            return Log::DIR(name);
+        } else if FILE_RE.is_match(log) {
+            let cap = FILE_RE.captures(log).expect("file capture failure");
+            let name = cap
+                .get(2)
+                .expect("missing file name capture")
+                .as_str()
+                .to_string();
+            let size = cap
+                .get(1)
+                .unwrap()
+                .as_str()
+                .parse()
+                .expect("failed to parse file size");
+            return Log::FILE(name, size);
+        }
+        panic!("unrecognized log line {log}");
     }
-    panic!("unrecognized log line {log}");
 }
 
 fn up_from(cwd: &str) -> String {
@@ -141,7 +142,7 @@ fn parse_logs(input: &str) -> Filesystem {
 
     let mut cwd = String::new();
     for line in input.lines() {
-        match parse_log_line(line) {
+        match Log::from(line) {
             Log::CD(name) => {
                 if name == ".." {
                     cwd = up_from(&cwd);
@@ -330,11 +331,11 @@ $ ls
 
     #[test]
     fn test_parse_log_line() {
-        assert_eq!(parse_log_line("$ cd /"), Log::CD(String::from("/")));
-        assert_eq!(parse_log_line("$ ls"), Log::LS);
-        assert_eq!(parse_log_line("dir a"), Log::DIR(String::from("a")));
+        assert_eq!(Log::from("$ cd /"), Log::CD(String::from("/")));
+        assert_eq!(Log::from("$ ls"), Log::LS);
+        assert_eq!(Log::from("dir a"), Log::DIR(String::from("a")));
         assert_eq!(
-            parse_log_line("14848514 b.txt"),
+            Log::from("14848514 b.txt"),
             Log::FILE(String::from("b.txt"), 14848514)
         );
     }
