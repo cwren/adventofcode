@@ -1,56 +1,51 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{fs::File, io::Read, str::Lines, borrow::BorrowMut};
+use std::{collections::HashMap, fs::File, hash::Hash, hash::Hasher, io::Read};
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 enum NodeFlavor {
     DIR,
     FILE,
 }
 use crate::NodeFlavor::{DIR, FILE};
 
-#[derive(Clone)] 
+#[derive(Clone, Debug)] 
 struct Node {
     flavor: NodeFlavor,
     name: String,
     size: usize,
-    nodes: Vec<Node>,
+    children: Vec<String>,
 }
 
-impl Node {
-    fn name(&self) -> &str {
-        &self.name
+impl Hash for Node {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
     }
-    
-    fn size(&self) -> usize {
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+impl Eq for Node {}
+
+type Filesystem = HashMap<String, Node>;
+
+impl Node {
+    fn size(&self, fs: &Filesystem) -> usize {
         match self.flavor {
             NodeFlavor::FILE => self.size,
-            NodeFlavor::DIR => self.nodes.iter().map(|n| n.size()).sum(),
+            NodeFlavor::DIR => self.children.iter().map(|n| fs.get(n).expect("missing node!").size(fs)).sum(),
         }
-    }
-
-    fn len(&self) -> usize {
-        match self.flavor {
-            NodeFlavor::FILE => 1,
-            NodeFlavor::DIR => self.nodes.len(),
-        }
-    }
-
-    fn get(&self, probe: &str) -> Option<&Node> {
-        for node in self.nodes.iter() {
-            if node.name() == probe {
-                return Some(&node);
-            }
-        }
-        return None;
     }
 
     fn make_file(name: &str, size: usize) -> Node {
-        Node {flavor: FILE, name: name.to_string(), size: size, nodes: Vec::new()}
+        Node {flavor: FILE, name: name.to_string(), size: size, children: Vec::new()}
     }
 
     fn make_dir(name: &str) -> Node {
-        Node {flavor: DIR, name: name.to_string(), size: 0, nodes: Vec::new()}
+        Node {flavor: DIR, name: name.to_string(), size: 0, children: Vec::new()}
     }
     
 }
@@ -64,7 +59,7 @@ enum Log {
 }
 
 lazy_static! {
-    static ref CD_RE: regex::Regex = Regex::new(r"^\$ cd ([/a-zA-Z0-9]+)$").unwrap();
+    static ref CD_RE: regex::Regex = Regex::new(r"^\$ cd ([/a-zA-Z0-9.]+)$").unwrap();
     static ref LS_RE: regex::Regex = Regex::new(r"^\$ ls$").unwrap();
     static ref DIR_RE: regex::Regex = Regex::new(r"^dir ([/a-zA-Z0-9]+)$").unwrap();
     static ref FILE_RE: regex::Regex = Regex::new(r"^([0-9]+) ([/a-zA-Z0-9.]+)$").unwrap();
@@ -91,49 +86,86 @@ fn parse_log_line(log: &str) -> Log {
     panic!("unrecognized log line {log}");
 }
 
-fn parse_logs(input: &str) -> Node {
-    let root = Node::make_dir("/");
-    let mut path = Vec::new(); 
+fn up_from(cwd :&str) -> String {
+    if let Some(i) = cwd.rfind('/') {
+        let (a, _) = cwd.split_at(i);
+        if a.len() > 0 {
+            return a.to_string();
+        } else {
+            return String::from("/");
+        }
+    }
+    String::new()
+}
+
+fn make_name(cwd :&str, node: &str) -> String {
+    match cwd.len() {
+        0 => node.to_string(),
+        1 => [cwd, node].join(""),
+        _ => [cwd, node].join("/")
+    }
+}
+
+fn parse_logs(input: &str) -> Filesystem {
+    let mut fs = Filesystem::new();
+    fs.insert(String::from("/"), Node::make_dir("/")); //root directory
+
+    let mut cwd = String::new();
     for line in input.lines() {
         match parse_log_line(line) {
             Log::CD(name) => {
                 if name == ".." {
-                    path.pop();
+                    cwd = up_from(&cwd);
                 } else { 
-                    if path.is_empty() {
-                        path.push(Node::make_dir(&name)); // root node
-                    } else {
-                        match path.last().expect("did we cd ... above root?").get(&name) {
-                            Some(node) => {
-                                match node.flavor {
-                                    DIR => path.push(*node),
-                                    FILE => panic!("there was a file i nthe path!"),
-                                }
-                            },
-                            None => panic!("path is empty! did we cd off the top of root?"),
-                        }
-                    }
+                    cwd = make_name(&cwd, &name);
                 }
+                assert!(fs.contains_key(&cwd));
             }
             Log::LS => (),
             Log::FILE(name, size) => {
-                path.last().expect("did we cd ... above root?").nodes.push(Node::make_file(&name, size));
+                let filename  = make_name(&cwd, &name);
+                fs.insert(filename.clone(), Node::make_file(&filename, size));
+                fs.get_mut(&cwd).expect("adding to unknwon directory").children.push(filename.clone());
             }
             Log::DIR(name) => {
-                path.last().expect("did we cd ... above root?").nodes.push(Node::make_dir(&name));
+                let dirname = make_name(&cwd, &name);
+                fs.insert(dirname.clone(), Node::make_dir(&dirname));
+                fs.get_mut(&cwd).expect("adding to unknwon directory").children.push(dirname.clone());
             }
         }
     }
-    root
+    fs
+}
+
+fn part_1(fs: &HashMap<String, Node>) -> usize{
+    fs.iter()
+        .filter(|n| n.1.flavor == NodeFlavor::DIR && n.1.size(&fs) <= 100000)
+        .map(|n| n.1.size(&fs)).sum()
+}
+
+fn part_2(fs: &HashMap<String, Node>) -> usize{
+    let used = fs.get("/").expect("root directory missing").size(fs);
+    let free = 70000000 - used;
+    let goal = 30000000 - free;
+    assert!(goal > 0);
+    let mut candidates = fs.iter()
+        .filter(|n| n.1.flavor == NodeFlavor::DIR && n.1.size(&fs) > goal)
+        .map(|n| n.1)
+        .collect::<Vec<&Node>>();
+    candidates.sort_by(|a, b| a.size(&fs).partial_cmp(&b.size(&fs)).unwrap());
+    candidates.first().expect("no candidates found").size(&fs)
 }
 
 fn main() {
-    let mut f = File::open("input/006.txt").expect("File Error");
+    let mut f = File::open("input/007.txt").expect("File Error");
     let mut input = String::new();
     f.read_to_string(&mut input).expect("File Read Error");
     
-    let filesystem = parse_logs(&input);
-    println!("fs: {}", filesystem.name());
+    let fs = parse_logs(&input);
+    let t = part_1(&fs);
+    println!("total of dir larger than 100000 is {t}");
+    let f = part_2(&fs);
+    println!("size of directory to be freed is {f}");
 }
 
 #[cfg(test)]
@@ -162,30 +194,45 @@ $ ls
 8033020 d.log
 5626152 d.ext
 7214296 k"#;
-
+// - / (dir)
+//   - a (dir)
+//     - e (dir)
+//       - i (file, size=584)
+//     - f (file, size=29116)
+//     - g (file, size=2557)
+//     - h.lst (file, size=62596)
+//   - b.txt (file, size=14848514)
+//   - c.dat (file, size=8504156)
+//   - d (dir)
+//     - j (file, size=4060174)
+//     - d.log (file, size=8033020)
+//     - d.ext (file, size=5626152)
+//     - k (file, size=7214296)
     #[test]
     fn test_parse_log() {
         let filesystem = parse_logs(SAMPLE);
-        assert_eq!(filesystem.len(), 4);
-        filesystem.get("a").unwrap();
-        filesystem.get("b.txt").unwrap();
-        filesystem.get("c.dat").unwrap();
-        filesystem.get("a").unwrap().get("e").unwrap();
-        filesystem.get("a").unwrap().get("e").unwrap().get("i");
+        assert_eq!(filesystem.len(), 14);
+        println!("{:?}", filesystem);
+        filesystem.get("/a").unwrap();
+        filesystem.get("/b.txt").unwrap();
+        filesystem.get("/c.dat").unwrap();
+        filesystem.get("/a/e").unwrap();
+        filesystem.get("/a/e/i").unwrap();
     }
 
     #[test]
     fn test_size() {
         let filesystem = parse_logs(SAMPLE);
-        assert_eq!(filesystem.get("a").unwrap().get("e").unwrap().size(), 584);
-        assert_eq!(filesystem.get("a").unwrap().size(), 94853);
-        assert_eq!(filesystem.get("d").unwrap().size(), 24933642);
-        assert_eq!(filesystem.size(), 48381165);
+        assert_eq!(filesystem.get("/a/e").unwrap().size(&filesystem), 584);
+        assert_eq!(filesystem.get("/a").unwrap().size(&filesystem), 94853);
+        assert_eq!(filesystem.get("/d").unwrap().size(&filesystem), 24933642);
+        assert_eq!(filesystem.get("/").unwrap().size(&filesystem), 48381165);
     }
 
     #[test]
     fn test_cd_regex() {
         assert_eq!(CD_RE.is_match("$ cd /"), true);
+        assert_eq!(CD_RE.is_match("$ cd .."), true);
         assert_eq!(CD_RE.is_match("$ ls"), false);
         assert_eq!(CD_RE.is_match("dir a"), false);
         assert_eq!(CD_RE.is_match("14848514 b.txt"), false);
@@ -227,4 +274,24 @@ $ ls
         assert_eq!(parse_log_line("dir a"), Log::DIR(String::from("a")));
         assert_eq!(parse_log_line("14848514 b.txt"), Log::FILE(String::from("b.txt"), 14848514));
     }
+
+    #[test]
+    fn test_up_from() {
+        assert_eq!(up_from("/a/e/d"), "/a/e");
+        assert_eq!(up_from("/a/e"), "/a");
+        assert_eq!(up_from("/a"), "/");
+    }
+
+    #[test]
+    fn test_part_1() {
+        let fs = parse_logs(SAMPLE);
+        assert_eq!(part_1(&fs), 95437);
+    }
+
+    #[test]
+    fn test_part_2() {
+        let fs = parse_logs(SAMPLE);
+        assert_eq!(part_2(&fs), 24933642);
+    }
+
 }
