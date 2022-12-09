@@ -14,7 +14,7 @@ struct Op {
     n: i32,
 }
 type Position = (i32, i32); // x, y
-type State = (Position, Position); // head, tail
+type State = Vec<Position>; // head, tail
 type Program = Vec<Op>;
 impl Op {
     fn new(d: Direction, n: i32) -> Self {
@@ -48,33 +48,50 @@ impl From<&str> for Op {
 }
 
 fn execute(s: &State, d: &Direction) -> State {
-    let (h, t) = s;
+    let mut s = s.clone();
+    let mut h = s[0];
     match d {
-        U => ((h.0, h.1 + 1), *t),
-        D => ((h.0, h.1 - 1), *t),
-        R => ((h.0 + 1, h.1), *t),
-        L => ((h.0 - 1, h.1), *t),
+        U => h.1 = h.1 + 1,
+        D => h.1 = h.1 - 1,
+        R => h.0 = h.0 + 1,
+        L => h.0 = h.0 - 1,
     }
+    s[0] = h;
+    s
 }
 
 fn follow(s: &State) -> State {
-    let (h, t) = s;
-    let d = (h.0 - t.0).abs().max((h.1 - t.1).abs());
-    match d {
-        0 | 1 => (*h, (t.0, t.1)),
-        2 => (*h, (t.0 + (h.0 - t.0).signum(), t.1 + (h.1 - t.1).signum())),
-        _ => panic!("how did the head get so far away!"),
+    let mut next = State::new();
+    let mut prev = None;
+    for t in s {
+        match prev {
+            None => {
+                prev = Some(t.clone());
+                next.push(t.clone());
+            },
+            Some(h) => {
+                let mut t = t.clone();
+                if (h.0 - t.0).abs().max((h.1 - t.1).abs()) == 2 {
+                    t.0 = t.0 + (h.0 - t.0).signum();
+                    t.1 = t.1 + (h.1 - t.1).signum();
+                }
+                prev = Some(t.clone());
+                next.push(t);
+            }
+        }
     }
+    next
 }
 
-fn run_program(moves: &Program) -> usize {
+fn run_program(moves: &Program, num_knots: usize) -> usize {
     let mut trace = HashSet::new();
-    let mut s = ((0, 0), (0, 0));
-    trace.insert(s.1);
+    let mut s = Vec::new();
+    s.resize_with(num_knots + 1, || (0, 0));
+    trace.insert(s[num_knots]);
     for op in moves {
         for _ in 0..op.n {
             s = follow(&execute(&s, &op.d));
-            trace.insert(s.1);
+            trace.insert(s[num_knots]);
         }
     }
     trace.len()
@@ -87,7 +104,8 @@ fn main() {
 
     let program: Program = input.lines().map(|s| Op::from(s)).collect();
     println!("there are {} operations", program.len());
-    println!("tail touched {} locations", run_program(&program));
+    println!("1-tail touched {} locations", run_program(&program, 1));
+    println!("9-tail touched {} locations", run_program(&program, 9));
 }
 
 #[cfg(test)]
@@ -101,7 +119,14 @@ R 4
 D 1
 L 5
 R 2"#;
-
+const LONG_SAMPLE: &str = r#"R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20"#;
     #[test]
     fn test_parse_moves() {
         let program: Program = SAMPLE.lines().map(|s| Op::from(s)).collect();
@@ -110,29 +135,50 @@ R 2"#;
 
     #[test]
     fn test_move() {
-        assert_eq!(execute(&((3, 4), (2, 1)), &U), ((3, 5), (2, 1)));
-        assert_eq!(execute(&((3, 4), (2, 1)), &D), ((3, 3), (2, 1)));
-        assert_eq!(execute(&((3, 4), (2, 1)), &R), ((4, 4), (2, 1)));
-        assert_eq!(execute(&((3, 4), (2, 1)), &L), ((2, 4), (2, 1)));
-        assert_eq!(execute(&((0, 4), (2, 1)), &L), ((-1, 4), (2, 1)));
+        let s = Vec::from([(3, 4), (2, 1)]);
+        assert_eq!(execute(&s, &U), Vec::from([(3, 5), (2, 1)]));
+        assert_eq!(execute(&s, &D), Vec::from([(3, 3), (2, 1)]));
+        assert_eq!(execute(&s, &R), Vec::from([(4, 4), (2, 1)]));
+        assert_eq!(execute(&s, &L), Vec::from([(2, 4), (2, 1)]));
+        let s = Vec::from([(0, 4), (2, 1)]);
+        assert_eq!(execute(&s, &L), Vec::from([(-1, 4), (2, 1)]));
+    }
+
+    #[test]
+    fn test_snake_follow() {
+        let mut s = Vec::from([(3, 4); 10]);
+        for _ in 0..9 {
+            s = follow(&execute(&s, &R));
+        }
+        assert_eq!(s[0], (3 + 9, 4));
+        assert_eq!(s[1], (3 + 8, 4));
+        assert_eq!(s[5], (3 + 4, 4));
+        assert_eq!(s[9], (3 + 0, 4));
     }
 
     #[test]
     fn test_follow() {
-        assert_eq!(follow(&((3, 4), (3, 4))), ((3, 4), (3, 4)));
-        assert_eq!(follow(&((3, 4), (3, 5))), ((3, 4), (3, 5)));
-        assert_eq!(follow(&((3, 4), (4, 5))), ((3, 4), (4, 5)));
-        assert_eq!(follow(&((3, 4), (2, 3))), ((3, 4), (2, 3)));
+        assert_eq!(follow(&Vec::from([(3, 4), (3, 4)])), Vec::from([(3, 4), (3, 4)]));
+        assert_eq!(follow(&Vec::from([(3, 4), (3, 5)])), Vec::from([(3, 4), (3, 5)]));
+        assert_eq!(follow(&Vec::from([(3, 4), (4, 5)])), Vec::from([(3, 4), (4, 5)]));
+        assert_eq!(follow(&Vec::from([(3, 4), (2, 3)])), Vec::from([(3, 4), (2, 3)]));
 
-        assert_eq!(follow(&((3, 4), (5, 6))), ((3, 4), (4, 5)));
-        assert_eq!(follow(&((3, 4), (1, 2))), ((3, 4), (2, 3)));
+        assert_eq!(follow(&Vec::from([(3, 4), (5, 6)])), Vec::from([(3, 4), (4, 5)]));
+        assert_eq!(follow(&Vec::from([(3, 4), (1, 2)])), Vec::from([(3, 4), (2, 3)]));
 
-        assert_eq!(follow(&((3, 4), (4, 6))), ((3, 4), (3, 5)));
-        assert_eq!(follow(&((3, 4), (2, 2))), ((3, 4), (3, 3)));
+        assert_eq!(follow(&Vec::from([(3, 4), (4, 6)])), Vec::from([(3, 4), (3, 5)]));
+        assert_eq!(follow(&Vec::from([(3, 4), (2, 2)])), Vec::from([(3, 4), (3, 3)]));
     }
+
     #[test]
-    fn test_run_program() {
+    fn test_run_short_tail() {
         let program: Program = SAMPLE.lines().map(|s| Op::from(s)).collect();
-        assert_eq!(run_program(&program), 13);
+        assert_eq!(run_program(&program, 1), 13);
+    }
+
+    #[test]
+    fn test_run_long_tail() {
+        let program: Program = LONG_SAMPLE.lines().map(|s| Op::from(s)).collect();
+        assert_eq!(run_program(&program, 9), 36);
     }
 }
