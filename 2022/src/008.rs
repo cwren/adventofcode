@@ -77,7 +77,7 @@ fn visible(orchard: &Vec<Vec<i8>>) -> usize {
     total
 }
 
-fn score_location(orchard: &Vec<Vec<i8>>, y: usize, x:usize) -> u32 {
+fn score_location(orchard: &Vec<Vec<i8>>, y: usize, x: usize) -> u32 {
     let h = orchard.len();
     let w = orchard[0].len();
     let mut scores: Vec<u32> = Vec::new();
@@ -103,7 +103,7 @@ fn score_location(orchard: &Vec<Vec<i8>>, y: usize, x:usize) -> u32 {
                 break;
             }
             if j == 0 {
-                break
+                break;
             }
             j -= 1;
         }
@@ -130,7 +130,7 @@ fn score_location(orchard: &Vec<Vec<i8>>, y: usize, x:usize) -> u32 {
                 break;
             }
             if i == 0 {
-                break
+                break;
             }
             i -= 1;
         }
@@ -140,12 +140,11 @@ fn score_location(orchard: &Vec<Vec<i8>>, y: usize, x:usize) -> u32 {
     scores.iter().product()
 }
 
-
 fn best_view(orchard: &Vec<Vec<i8>>) -> u32 {
     let mut max = 0;
     for (i, row) in orchard.iter().enumerate() {
         for (j, _) in row.iter().enumerate() {
-            let score =score_location(orchard, i, j);
+            let score = score_location(orchard, i, j);
             max = max.max(score);
         }
     }
