@@ -16,11 +16,6 @@ struct Op {
 type Position = (i32, i32); // x, y
 type State = Vec<Position>; // head, tail
 type Program = Vec<Op>;
-impl Op {
-    fn new(d: Direction, n: i32) -> Self {
-        Op { d, n }
-    }
-}
 
 impl From<&str> for Direction {
     fn from(line: &str) -> Self {
@@ -51,10 +46,10 @@ fn execute(s: &State, d: &Direction) -> State {
     let mut s = s.clone();
     let mut h = s[0];
     match d {
-        U => h.1 = h.1 + 1,
-        D => h.1 = h.1 - 1,
-        R => h.0 = h.0 + 1,
-        L => h.0 = h.0 - 1,
+        U => h.1 += 1,
+        D => h.1 -= 1,
+        R => h.0 += 1,
+        L => h.0 -= 1,
     }
     s[0] = h;
     s
@@ -66,16 +61,16 @@ fn follow(s: &State) -> State {
     for t in s {
         match prev {
             None => {
-                prev = Some(t.clone());
-                next.push(t.clone());
+                prev = Some(*t);
+                next.push(*t);
             },
             Some(h) => {
-                let mut t = t.clone();
+                let mut t = *t;
                 if (h.0 - t.0).abs().max((h.1 - t.1).abs()) == 2 {
                     t.0 = t.0 + (h.0 - t.0).signum();
                     t.1 = t.1 + (h.1 - t.1).signum();
                 }
-                prev = Some(t.clone());
+                prev = Some(t);
                 next.push(t);
             }
         }
@@ -102,7 +97,7 @@ fn main() {
     let mut input = String::new();
     f.read_to_string(&mut input).expect("File Read Error");
 
-    let program: Program = input.lines().map(|s| Op::from(s)).collect();
+    let program: Program = input.lines().map(Op::from).collect();
     println!("there are {} operations", program.len());
     println!("1-tail touched {} locations", run_program(&program, 1));
     println!("9-tail touched {} locations", run_program(&program, 9));
@@ -129,7 +124,7 @@ L 25
 U 20"#;
     #[test]
     fn test_parse_moves() {
-        let program: Program = SAMPLE.lines().map(|s| Op::from(s)).collect();
+        let program: Program = SAMPLE.lines().map(Op::from).collect();
         assert_eq!(program.len(), 8);
     }
 
@@ -172,13 +167,13 @@ U 20"#;
 
     #[test]
     fn test_run_short_tail() {
-        let program: Program = SAMPLE.lines().map(|s| Op::from(s)).collect();
+        let program: Program = SAMPLE.lines().map(Op::from).collect();
         assert_eq!(run_program(&program, 1), 13);
     }
 
     #[test]
     fn test_run_long_tail() {
-        let program: Program = LONG_SAMPLE.lines().map(|s| Op::from(s)).collect();
+        let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
         assert_eq!(run_program(&program, 9), 36);
     }
 }
