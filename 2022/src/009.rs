@@ -63,7 +63,7 @@ fn follow(s: &State) -> State {
             None => {
                 prev = Some(*t);
                 next.push(*t);
-            },
+            }
             Some(h) => {
                 let mut t = *t;
                 if (h.0 - t.0).abs().max((h.1 - t.1).abs()) == 2 {
@@ -114,7 +114,7 @@ R 4
 D 1
 L 5
 R 2"#;
-const LONG_SAMPLE: &str = r#"R 5
+    const LONG_SAMPLE: &str = r#"R 5
 U 8
 L 8
 D 3
@@ -153,16 +153,40 @@ U 20"#;
 
     #[test]
     fn test_follow() {
-        assert_eq!(follow(&Vec::from([(3, 4), (3, 4)])), Vec::from([(3, 4), (3, 4)]));
-        assert_eq!(follow(&Vec::from([(3, 4), (3, 5)])), Vec::from([(3, 4), (3, 5)]));
-        assert_eq!(follow(&Vec::from([(3, 4), (4, 5)])), Vec::from([(3, 4), (4, 5)]));
-        assert_eq!(follow(&Vec::from([(3, 4), (2, 3)])), Vec::from([(3, 4), (2, 3)]));
+        assert_eq!(
+            follow(&Vec::from([(3, 4), (3, 4)])),
+            Vec::from([(3, 4), (3, 4)])
+        );
+        assert_eq!(
+            follow(&Vec::from([(3, 4), (3, 5)])),
+            Vec::from([(3, 4), (3, 5)])
+        );
+        assert_eq!(
+            follow(&Vec::from([(3, 4), (4, 5)])),
+            Vec::from([(3, 4), (4, 5)])
+        );
+        assert_eq!(
+            follow(&Vec::from([(3, 4), (2, 3)])),
+            Vec::from([(3, 4), (2, 3)])
+        );
 
-        assert_eq!(follow(&Vec::from([(3, 4), (5, 6)])), Vec::from([(3, 4), (4, 5)]));
-        assert_eq!(follow(&Vec::from([(3, 4), (1, 2)])), Vec::from([(3, 4), (2, 3)]));
+        assert_eq!(
+            follow(&Vec::from([(3, 4), (5, 6)])),
+            Vec::from([(3, 4), (4, 5)])
+        );
+        assert_eq!(
+            follow(&Vec::from([(3, 4), (1, 2)])),
+            Vec::from([(3, 4), (2, 3)])
+        );
 
-        assert_eq!(follow(&Vec::from([(3, 4), (4, 6)])), Vec::from([(3, 4), (3, 5)]));
-        assert_eq!(follow(&Vec::from([(3, 4), (2, 2)])), Vec::from([(3, 4), (3, 3)]));
+        assert_eq!(
+            follow(&Vec::from([(3, 4), (4, 6)])),
+            Vec::from([(3, 4), (3, 5)])
+        );
+        assert_eq!(
+            follow(&Vec::from([(3, 4), (2, 2)])),
+            Vec::from([(3, 4), (3, 3)])
+        );
     }
 
     #[test]
