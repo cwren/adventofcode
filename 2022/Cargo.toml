@@ -35,6 +35,10 @@ path = "src/007.rs"
 name = "008"
 path = "src/008.rs"
 
+[[bin]]
+name = "009"
+path = "src/009.rs"
+
 [dependencies]
 regex = "1"
 lazy_static = "1"
