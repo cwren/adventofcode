@@ -1,6 +1,6 @@
 use std::io::Read;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 enum Op {
     Noop,
     Addx(i32),
@@ -14,11 +14,19 @@ struct CPU<'cpu> {
     busy: usize,
     instructions: std::slice::Iter<'cpu, Op>,
     op: &'cpu Op,
+    wrote: Option<i32>,
 }
 
 impl CPU<'_> {
     fn new(program: &Program) -> CPU {
-        let mut cpu = CPU {t: 0, x: 1, busy: 0, instructions: program.iter(), op: &Op::Noop};
+        let mut cpu = CPU {
+            t: 0,
+            x: 1,
+            busy: 0,
+            instructions: program.iter(),
+            op: &Op::Noop,
+            wrote: None,
+        };
         cpu.load();
         cpu
     }
@@ -30,7 +38,7 @@ impl CPU<'_> {
                 self.op = op;
                 match self.op {
                     Op::Noop => self.busy = 0,
-                    Op::Addx(_) => self.busy = 1
+                    Op::Addx(_) => self.busy = 1,
                 }
                 true
             }
@@ -39,13 +47,15 @@ impl CPU<'_> {
 
     fn tick(&mut self)-> bool {
         self.t += 1;
+        if let Some(new_x) = self.wrote {
+            self.x = new_x;
+            self.wrote = None;
+        }
         match self.busy {
             0 => {
                 match self.op {
                     Op::Noop => (),
-                    Op::Addx(v) => {
-                        self.x += v;
-                    }
+                    Op::Addx(v) => self.wrote = Some(self.x + v),
                 }
                 self.load()
             }
@@ -60,12 +70,42 @@ impl CPU<'_> {
     fn signal(&mut self) -> i32 {
         let mut signal = 0;
         while self.tick() {
-            if self.t == 19 || (self.t + 1 - 20) % 40 == 0 {
-                signal += (self.t + 1) * self.x;
+            if self.t == 20 || (self.t - 20) % 40 == 0 {
+                signal += self.t * self.x;
             }
         }
         println!("{}", self.t);
         signal
+    }
+
+    fn render(&self, x: i32) -> String {
+        if (x - self.x).abs() < 2 {
+            String::from("#")
+        } else {
+            String::from(".")
+        }
+    }
+    fn draw(&mut self) -> Option<String> {
+        let mut trace = Vec::with_capacity(40);
+        let mut more = false;
+        loop {
+            more = self.tick();
+            if !more {
+                break; 
+            }
+            let p = (self.t - 1) % 40;
+            trace.push(self.render(p));
+            if p == 39 {
+                break;
+            }
+        }
+        if trace.is_empty() {
+            return None
+        }
+        while trace.len() < 40 {
+            trace.push(self.render(trace.len().try_into().expect("vec larger than i32")));
+        }
+        Some(trace.join(""))
     }
 
 }
@@ -98,6 +138,13 @@ fn main() {
 
     let mut cpu = CPU::new(&program);
     println!("signal is {}" , cpu.signal());
+    let mut cpu = CPU::new(&program);
+    loop {
+        match cpu.draw() {
+            None => break,
+            Some(row) => println!("{row}"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -126,22 +173,27 @@ addx -5"#;
         assert_eq!(cpu.tick(), true);
         assert_eq!(cpu.t, 1);
         assert_eq!(cpu.x, 1);
+        assert_eq!(cpu.wrote, None);
         
         assert_eq!(cpu.tick(), true);
         assert_eq!(cpu.t, 2);
         assert_eq!(cpu.x, 1);
+        assert_eq!(cpu.wrote, None);
         
         assert_eq!(cpu.tick(), true);
         assert_eq!(cpu.t, 3);
-        assert_eq!(cpu.x, 4);
+        assert_eq!(cpu.x, 1);
+        assert_eq!(cpu.wrote, Some(4));
         
         assert_eq!(cpu.tick(), true);
         assert_eq!(cpu.t, 4);
         assert_eq!(cpu.x, 4);
+        assert_eq!(cpu.wrote, None);
         
         assert_eq!(cpu.tick(), false);
         assert_eq!(cpu.t, 5);
-        assert_eq!(cpu.x, -1);
+        assert_eq!(cpu.x, 4);
+        assert_eq!(cpu.wrote, Some(-1));
 
     }
 
@@ -150,22 +202,23 @@ addx -5"#;
         let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
         let mut cpu = CPU::new(&program);
 
-        while cpu.t < 19 { cpu.tick(); };
+        while cpu.t < 20 { cpu.tick(); };
         assert_eq!(cpu.x, 21);
+        assert_eq!(cpu.x * cpu.t, 420);
 
-        while cpu.t < 59 { cpu.tick(); };
+        while cpu.t < 60 { cpu.tick(); };
         assert_eq!(cpu.x, 19);
 
-        while cpu.t < 99 { cpu.tick(); };
+        while cpu.t < 100 { cpu.tick(); };
         assert_eq!(cpu.x, 18);
 
-        while cpu.t < 139 { cpu.tick(); };
+        while cpu.t < 140 { cpu.tick(); };
         assert_eq!(cpu.x, 21);
 
-        while cpu.t < 179 { cpu.tick(); };
+        while cpu.t < 180 { cpu.tick(); };
         assert_eq!(cpu.x, 16);
 
-        while cpu.t < 219 { cpu.tick(); };
+        while cpu.t < 220 { cpu.tick(); };
         assert_eq!(cpu.x, 18);
     }
 
@@ -174,5 +227,18 @@ addx -5"#;
         let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
         let mut cpu = CPU::new(&program);
         assert_eq!(cpu.signal(), 13140);
+    }
+
+    #[test]
+    fn test_draw() {
+        let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
+        let mut cpu = CPU::new(&program);
+        assert_eq!(cpu.draw(), Some("##..##..##..##..##..##..##..##..##..##..".to_string()));
+        assert_eq!(cpu.draw(), Some("###...###...###...###...###...###...###.".to_string()));
+        assert_eq!(cpu.draw(), Some("####....####....####....####....####....".to_string()));
+        assert_eq!(cpu.draw(), Some("#####.....#####.....#####.....#####.....".to_string()));
+        assert_eq!(cpu.draw(), Some("######......######......######......####".to_string()));
+        assert_eq!(cpu.draw(), Some("#######.......#######.......#######.....".to_string()));
+        assert_eq!(cpu.draw(), None);
     }
 }
