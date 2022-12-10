@@ -8,7 +8,7 @@ enum Op {
 
 type Program = Vec<Op>;
 
-struct CPU<'cpu> {
+struct Cpu<'cpu> {
     t: i32,
     x: i32,
     busy: usize,
@@ -17,9 +17,9 @@ struct CPU<'cpu> {
     wrote: Option<i32>,
 }
 
-impl CPU<'_> {
-    fn new(program: &Program) -> CPU {
-        let mut cpu = CPU {
+impl Cpu<'_> {
+    fn new(program: &Program) -> Cpu {
+        let mut cpu = Cpu {
             t: 0,
             x: 1,
             busy: 0,
@@ -87,12 +87,7 @@ impl CPU<'_> {
     }
     fn draw(&mut self) -> Option<String> {
         let mut trace = Vec::with_capacity(40);
-        let mut more = false;
-        loop {
-            more = self.tick();
-            if !more {
-                break; 
-            }
+        while self.tick() {
             let p = (self.t - 1) % 40;
             trace.push(self.render(p));
             if p == 39 {
@@ -136,9 +131,9 @@ fn main() {
     let program: Program = input.lines().map(Op::from).collect();
     println!("there are {} cycles", program.len());
 
-    let mut cpu = CPU::new(&program);
+    let mut cpu = Cpu::new(&program);
     println!("signal is {}" , cpu.signal());
-    let mut cpu = CPU::new(&program);
+    let mut cpu = Cpu::new(&program);
     loop {
         match cpu.draw() {
             None => break,
@@ -168,7 +163,7 @@ addx -5"#;
     #[test]
     fn test_tick() {
         let program: Program = SAMPLE.lines().map(Op::from).collect();
-        let mut cpu = CPU::new(&program);
+        let mut cpu = Cpu::new(&program);
 
         assert_eq!(cpu.tick(), true);
         assert_eq!(cpu.t, 1);
@@ -200,7 +195,7 @@ addx -5"#;
     #[test]
     fn test_ticks() {
         let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
-        let mut cpu = CPU::new(&program);
+        let mut cpu = Cpu::new(&program);
 
         while cpu.t < 20 { cpu.tick(); };
         assert_eq!(cpu.x, 21);
@@ -225,14 +220,14 @@ addx -5"#;
     #[test]
     fn test_signal() {
         let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
-        let mut cpu = CPU::new(&program);
+        let mut cpu = Cpu::new(&program);
         assert_eq!(cpu.signal(), 13140);
     }
 
     #[test]
     fn test_draw() {
         let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
-        let mut cpu = CPU::new(&program);
+        let mut cpu = Cpu::new(&program);
         assert_eq!(cpu.draw(), Some("##..##..##..##..##..##..##..##..##..##..".to_string()));
         assert_eq!(cpu.draw(), Some("###...###...###...###...###...###...###.".to_string()));
         assert_eq!(cpu.draw(), Some("####....####....####....####....####....".to_string()));
