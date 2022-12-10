@@ -45,7 +45,7 @@ impl Cpu<'_> {
         }
     }
 
-    fn tick(&mut self)-> bool {
+    fn tick(&mut self) -> bool {
         self.t += 1;
         if let Some(new_x) = self.wrote {
             self.x = new_x;
@@ -64,7 +64,6 @@ impl Cpu<'_> {
                 true
             }
         }
-
     }
 
     fn signal(&mut self) -> i32 {
@@ -95,14 +94,13 @@ impl Cpu<'_> {
             }
         }
         if trace.is_empty() {
-            return None
+            return None;
         }
         while trace.len() < 40 {
             trace.push(self.render(trace.len().try_into().expect("vec larger than i32")));
         }
         Some(trace.join(""))
     }
-
 }
 
 impl From<&str> for Op {
@@ -132,7 +130,7 @@ fn main() {
     println!("there are {} cycles", program.len());
 
     let mut cpu = Cpu::new(&program);
-    println!("signal is {}" , cpu.signal());
+    println!("signal is {}", cpu.signal());
     let mut cpu = Cpu::new(&program);
     loop {
         match cpu.draw() {
@@ -148,7 +146,7 @@ mod tests {
     const SAMPLE: &str = r#"noop
 addx 3
 addx -5"#;
-    
+
     const LONG_SAMPLE: &str = include_str!("../input/010-sample.txt");
 
     #[test]
@@ -169,27 +167,26 @@ addx -5"#;
         assert_eq!(cpu.t, 1);
         assert_eq!(cpu.x, 1);
         assert_eq!(cpu.wrote, None);
-        
+
         assert_eq!(cpu.tick(), true);
         assert_eq!(cpu.t, 2);
         assert_eq!(cpu.x, 1);
         assert_eq!(cpu.wrote, None);
-        
+
         assert_eq!(cpu.tick(), true);
         assert_eq!(cpu.t, 3);
         assert_eq!(cpu.x, 1);
         assert_eq!(cpu.wrote, Some(4));
-        
+
         assert_eq!(cpu.tick(), true);
         assert_eq!(cpu.t, 4);
         assert_eq!(cpu.x, 4);
         assert_eq!(cpu.wrote, None);
-        
+
         assert_eq!(cpu.tick(), false);
         assert_eq!(cpu.t, 5);
         assert_eq!(cpu.x, 4);
         assert_eq!(cpu.wrote, Some(-1));
-
     }
 
     #[test]
@@ -197,23 +194,35 @@ addx -5"#;
         let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
         let mut cpu = Cpu::new(&program);
 
-        while cpu.t < 20 { cpu.tick(); };
+        while cpu.t < 20 {
+            cpu.tick();
+        }
         assert_eq!(cpu.x, 21);
         assert_eq!(cpu.x * cpu.t, 420);
 
-        while cpu.t < 60 { cpu.tick(); };
+        while cpu.t < 60 {
+            cpu.tick();
+        }
         assert_eq!(cpu.x, 19);
 
-        while cpu.t < 100 { cpu.tick(); };
+        while cpu.t < 100 {
+            cpu.tick();
+        }
         assert_eq!(cpu.x, 18);
 
-        while cpu.t < 140 { cpu.tick(); };
+        while cpu.t < 140 {
+            cpu.tick();
+        }
         assert_eq!(cpu.x, 21);
 
-        while cpu.t < 180 { cpu.tick(); };
+        while cpu.t < 180 {
+            cpu.tick();
+        }
         assert_eq!(cpu.x, 16);
 
-        while cpu.t < 220 { cpu.tick(); };
+        while cpu.t < 220 {
+            cpu.tick();
+        }
         assert_eq!(cpu.x, 18);
     }
 
@@ -228,12 +237,30 @@ addx -5"#;
     fn test_draw() {
         let program: Program = LONG_SAMPLE.lines().map(Op::from).collect();
         let mut cpu = Cpu::new(&program);
-        assert_eq!(cpu.draw(), Some("##..##..##..##..##..##..##..##..##..##..".to_string()));
-        assert_eq!(cpu.draw(), Some("###...###...###...###...###...###...###.".to_string()));
-        assert_eq!(cpu.draw(), Some("####....####....####....####....####....".to_string()));
-        assert_eq!(cpu.draw(), Some("#####.....#####.....#####.....#####.....".to_string()));
-        assert_eq!(cpu.draw(), Some("######......######......######......####".to_string()));
-        assert_eq!(cpu.draw(), Some("#######.......#######.......#######.....".to_string()));
+        assert_eq!(
+            cpu.draw(),
+            Some("##..##..##..##..##..##..##..##..##..##..".to_string())
+        );
+        assert_eq!(
+            cpu.draw(),
+            Some("###...###...###...###...###...###...###.".to_string())
+        );
+        assert_eq!(
+            cpu.draw(),
+            Some("####....####....####....####....####....".to_string())
+        );
+        assert_eq!(
+            cpu.draw(),
+            Some("#####.....#####.....#####.....#####.....".to_string())
+        );
+        assert_eq!(
+            cpu.draw(),
+            Some("######......######......######......####".to_string())
+        );
+        assert_eq!(
+            cpu.draw(),
+            Some("#######.......#######.......#######.....".to_string())
+        );
         assert_eq!(cpu.draw(), None);
     }
 }
