@@ -5,9 +5,9 @@ use std::str::Lines;
 type Id = usize;
 
 struct Monkey {
-    items: Vec<i32>,
-    op: Box<dyn Fn(i32) -> i32>,
-    modulus: i32,
+    items: Vec<u64>,
+    op: Box<dyn Fn(u64) -> u64>,
+    modulus: u64,
     accept: Id,
     reject: Id,
     looks: usize,
@@ -18,7 +18,7 @@ type Troop = Vec<RefCell<Monkey>>;
 fn parse_troop<'paw>(input: Lines) -> Troop {
     let mut troop = Vec::new();
     let mut items = None;
-    let mut op: Option<Box<dyn Fn(i32) -> i32>> = None;
+    let mut op: Option<Box<dyn Fn(u64) -> u64>> = None;
     let mut modulus = None;
     let mut accept = None;
     let mut started = false;
@@ -37,7 +37,7 @@ fn parse_troop<'paw>(input: Lines) -> Troop {
                     op = Some(Box::new(move |x| x * x));
                 },
                 Some(arg) => {
-                    match arg.parse::<i32>() {
+                    match arg.parse::<u64>() {
                         Ok(operand) => {
                             if line.contains("+") {
                                 op = Some(Box::new(move |x| x + operand));
@@ -56,7 +56,7 @@ fn parse_troop<'paw>(input: Lines) -> Troop {
             modulus = Some(line.split(' ')
                 .last()
                 .expect("known good prefix at least")
-                .parse::<i32>()
+                .parse::<u64>()
                 .expect("couldn't parse modulus"));
         } else if line.starts_with("    If true:") {
             accept = Some(line.split(' ')
@@ -90,13 +90,14 @@ fn parse_troop<'paw>(input: Lines) -> Troop {
     troop
 }
 
-fn round<'round>(troop: &'round mut Troop) {
-    for monkey_ref in troop.iter(){
+fn round<'round>(troop: &'round mut Troop, fidget: &dyn Fn(u64) -> u64) {
+    for (i, monkey_ref) in troop.iter().enumerate() {
         let mut monkey = monkey_ref.borrow_mut();
-        for item in monkey.items.iter() {
-            let updated_value = (monkey.op)(*item) / 3;
+        for value in monkey.items.iter() {
+            let high_anxiety = (monkey.op)(*value);
+            let updated_value = fidget(high_anxiety);
             let mut target = monkey.reject;
-            if updated_value% monkey.modulus == 0 {
+            if updated_value % monkey.modulus == 0 {
                 target = monkey.accept;
             }
             troop[target].borrow_mut().items.push(updated_value);
@@ -120,9 +121,16 @@ fn main() {
 
     println!("there are {} monkeys", troop.len());
     for _ in 0..20 {
-        round(&mut troop);
+        round(&mut troop, &|w| w / 3);
     }
     println!("the monkey business goes to {}", monkey_business(&troop));
+
+    let mut troop = &mut parse_troop(input.lines());
+    let lcm = troop.iter().map(|m| m.borrow().modulus).fold(1, |res, a| res * a);
+    for _ in 0..10_000 {
+        round(&mut troop, &|w| w % lcm);
+    }
+    println!("high anxiety monkey business goes to {}", monkey_business(&troop));
 }
 
 #[cfg(test)]
@@ -139,9 +147,9 @@ mod tests {
     #[test]
     fn test_round() {
         let mut troop = &mut parse_troop(SAMPLE.lines());
-        round(&mut troop);
-        assert_eq!(troop[0].borrow().items, Vec::from([20, 23, 27, 26]));
-        assert_eq!(troop[1].borrow().items, Vec::from([2080, 25, 167, 207, 401, 1046]));
+        round(&mut troop, &|w| w / 3);
+        assert_eq!(troop[0].borrow().items, [20, 23, 27, 26]);
+        assert_eq!(troop[1].borrow().items, [2080, 25, 167, 207, 401, 1046]);
         assert!(troop[2].borrow().items.is_empty());
         assert!(troop[3].borrow().items.is_empty());
     }
@@ -150,12 +158,49 @@ mod tests {
     fn test_monkey_business() {
         let mut troop = &mut parse_troop(SAMPLE.lines());
         for _ in 0..20 {
-            round(&mut troop);
+            round(&mut troop, &|w| w / 3);
         }
-        assert_eq!(troop[0].borrow().items, Vec::from([10, 12, 14, 26, 34]));
-        assert_eq!(troop[1].borrow().items, Vec::from([245, 93, 53, 199, 115]));
+        assert_eq!(troop[0].borrow().items, [10, 12, 14, 26, 34]);
+        assert_eq!(troop[1].borrow().items, [245, 93, 53, 199, 115]);
         assert!(troop[2].borrow().items.is_empty());
         assert!(troop[3].borrow().items.is_empty());
         assert_eq!(monkey_business(troop), 10605);
+    }
+
+    #[test]
+    fn test_fidget() {
+        let mut troop = &mut parse_troop(SAMPLE.lines());
+        let lcm = troop.iter().map(|m| m.borrow().modulus).fold(1, |res, a| res * a);
+        println!("{lcm}");
+        let clocks = |w| w % lcm;
+        round(&mut troop, &clocks);
+        assert_eq!(troop[0].borrow().looks, 2); 
+        assert_eq!(troop[1].borrow().looks, 4);
+        assert_eq!(troop[2].borrow().looks, 3);
+        assert_eq!(troop[3].borrow().looks, 6);
+        for _ in 1..20 {
+            round(&mut troop, &clocks);
+        }
+        assert_eq!(troop[0].borrow().looks, 99); 
+        assert_eq!(troop[1].borrow().looks, 97);
+        assert_eq!(troop[2].borrow().looks, 8);
+        assert_eq!(troop[3].borrow().looks, 103);
+        for _ in 20..1_000 {
+            round(&mut troop, &clocks);
+        }
+        assert_eq!(troop[0].borrow().looks, 5204); 
+        assert_eq!(troop[1].borrow().looks, 4792);
+        assert_eq!(troop[2].borrow().looks, 199);
+        assert_eq!(troop[3].borrow().looks, 5192);
+    }
+
+    #[test]
+    fn test_big_worres() {
+        let mut troop = &mut parse_troop(SAMPLE.lines());
+        let lcm = troop.iter().map(|m| m.borrow().modulus).fold(1, |res, a| res * a);
+        for _ in 0..10_000 {
+            round(&mut troop, &|w| w % lcm);
+        }
+        assert_eq!(monkey_business(troop), 2713310158);
     }
 }
