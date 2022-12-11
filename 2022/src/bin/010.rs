@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::fs;
 
 #[derive(Clone, Debug, PartialEq)]
 enum Op {
@@ -122,10 +122,7 @@ impl From<&str> for Op {
 }
 
 fn main() {
-    let mut f = std::fs::File::open("input/010.txt").expect("File Error");
-    let mut input = String::new();
-    f.read_to_string(&mut input).expect("File Read Error");
-
+    let input = fs::read_to_string("input/010.txt").expect("file read error");
     let program: Program = input.lines().map(Op::from).collect();
     println!("there are {} cycles", program.len());
 
