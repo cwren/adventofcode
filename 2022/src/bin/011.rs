@@ -27,50 +27,55 @@ fn parse_troop<'paw>(input: Lines) -> Troop {
             assert!(!started, "started a new monkey in te middle");
             started = true;
         } else if line.starts_with("  Starting items:") {
-            items = Some(line.trim_start_matches("  Starting items: ")
-                .split(", ")
-                .map(|s| s.parse().unwrap())
-                .collect());
+            items = Some(
+                line.trim_start_matches("  Starting items: ")
+                    .split(", ")
+                    .map(|s| s.parse().unwrap())
+                    .collect(),
+            );
         } else if line.starts_with("  Operation:") {
             match line.split(' ').last() {
                 Some("old") => {
                     op = Some(Box::new(move |x| x * x));
-                },
-                Some(arg) => {
-                    match arg.parse::<u64>() {
-                        Ok(operand) => {
-                            if line.contains("+") {
-                                op = Some(Box::new(move |x| x + operand));
-                            } else if line.contains("*") {
-                                op = Some(Box::new(move |x| x * operand));
-                            } else {
-                                panic!("unknown operator on the monkey");
-                            }
-                        },
-                        Err(_) => todo!(),
-                    }
                 }
-                None => panic!("we already checked for a known good prefix")
+                Some(arg) => match arg.parse::<u64>() {
+                    Ok(operand) => {
+                        if line.contains("+") {
+                            op = Some(Box::new(move |x| x + operand));
+                        } else if line.contains("*") {
+                            op = Some(Box::new(move |x| x * operand));
+                        } else {
+                            panic!("unknown operator on the monkey");
+                        }
+                    }
+                    Err(_) => todo!(),
+                },
+                None => panic!("we already checked for a known good prefix"),
             }
         } else if line.starts_with("  Test:") {
-            modulus = Some(line.split(' ')
-                .last()
-                .expect("known good prefix at least")
-                .parse::<u64>()
-                .expect("couldn't parse modulus"));
+            modulus = Some(
+                line.split(' ')
+                    .last()
+                    .expect("known good prefix at least")
+                    .parse::<u64>()
+                    .expect("couldn't parse modulus"),
+            );
         } else if line.starts_with("    If true:") {
-            accept = Some(line.split(' ')
-                .last()
-                .expect("known good prefix at least")
-                .parse::<usize>()
-                .expect("couldn't parse accept"));
-
+            accept = Some(
+                line.split(' ')
+                    .last()
+                    .expect("known good prefix at least")
+                    .parse::<usize>()
+                    .expect("couldn't parse accept"),
+            );
         } else if line.starts_with("    If false:") {
-            let reject = Some(line.split(' ')
-                .last()
-                .expect("known good prefix at least")
-                .parse::<usize>()
-                .expect("couldn't parse reject"));
+            let reject = Some(
+                line.split(' ')
+                    .last()
+                    .expect("known good prefix at least")
+                    .parse::<usize>()
+                    .expect("couldn't parse reject"),
+            );
 
             troop.push(RefCell::new(Monkey {
                 items: items.expect("end of monkey with no items"),
@@ -108,10 +113,16 @@ fn round<'round>(troop: &'round mut Troop, fidget: &dyn Fn(u64) -> u64) {
 }
 
 fn monkey_business(troop: &Troop) -> usize {
-    let mut looks = troop.iter().map(|m| m.borrow().looks).collect::<Vec<usize>>();
+    let mut looks = troop
+        .iter()
+        .map(|m| m.borrow().looks)
+        .collect::<Vec<usize>>();
     looks.sort();
     looks.reverse();
-    assert!(looks.len() >= 2, "too few monkeys to comtemplate any monkey business");
+    assert!(
+        looks.len() >= 2,
+        "too few monkeys to comtemplate any monkey business"
+    );
     looks[0] * looks[1]
 }
 
@@ -126,11 +137,17 @@ fn main() {
     println!("the monkey business goes to {}", monkey_business(&troop));
 
     let mut troop = &mut parse_troop(input.lines());
-    let lcm = troop.iter().map(|m| m.borrow().modulus).fold(1, |res, a| res * a);
+    let lcm = troop
+        .iter()
+        .map(|m| m.borrow().modulus)
+        .fold(1, |res, a| res * a);
     for _ in 0..10_000 {
         round(&mut troop, &|w| w % lcm);
     }
-    println!("high anxiety monkey business goes to {}", monkey_business(&troop));
+    println!(
+        "high anxiety monkey business goes to {}",
+        monkey_business(&troop)
+    );
 }
 
 #[cfg(test)]
@@ -170,25 +187,28 @@ mod tests {
     #[test]
     fn test_fidget() {
         let mut troop = &mut parse_troop(SAMPLE.lines());
-        let lcm = troop.iter().map(|m| m.borrow().modulus).fold(1, |res, a| res * a);
+        let lcm = troop
+            .iter()
+            .map(|m| m.borrow().modulus)
+            .fold(1, |res, a| res * a);
         println!("{lcm}");
         let clocks = |w| w % lcm;
         round(&mut troop, &clocks);
-        assert_eq!(troop[0].borrow().looks, 2); 
+        assert_eq!(troop[0].borrow().looks, 2);
         assert_eq!(troop[1].borrow().looks, 4);
         assert_eq!(troop[2].borrow().looks, 3);
         assert_eq!(troop[3].borrow().looks, 6);
         for _ in 1..20 {
             round(&mut troop, &clocks);
         }
-        assert_eq!(troop[0].borrow().looks, 99); 
+        assert_eq!(troop[0].borrow().looks, 99);
         assert_eq!(troop[1].borrow().looks, 97);
         assert_eq!(troop[2].borrow().looks, 8);
         assert_eq!(troop[3].borrow().looks, 103);
         for _ in 20..1_000 {
             round(&mut troop, &clocks);
         }
-        assert_eq!(troop[0].borrow().looks, 5204); 
+        assert_eq!(troop[0].borrow().looks, 5204);
         assert_eq!(troop[1].borrow().looks, 4792);
         assert_eq!(troop[2].borrow().looks, 199);
         assert_eq!(troop[3].borrow().looks, 5192);
@@ -197,7 +217,10 @@ mod tests {
     #[test]
     fn test_big_worres() {
         let mut troop = &mut parse_troop(SAMPLE.lines());
-        let lcm = troop.iter().map(|m| m.borrow().modulus).fold(1, |res, a| res * a);
+        let lcm = troop
+            .iter()
+            .map(|m| m.borrow().modulus)
+            .fold(1, |res, a| res * a);
         for _ in 0..10_000 {
             round(&mut troop, &|w| w % lcm);
         }
