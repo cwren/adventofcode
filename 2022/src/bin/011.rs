@@ -15,7 +15,7 @@ struct Monkey {
 
 type Troop = Vec<RefCell<Monkey>>;
 
-fn parse_troop<'paw>(input: Lines) -> Troop {
+fn parse_troop(input: Lines) -> Troop {
     let mut troop = Vec::new();
     let mut items = None;
     let mut op: Option<Box<dyn Fn(u64) -> u64>> = None;
@@ -40,9 +40,9 @@ fn parse_troop<'paw>(input: Lines) -> Troop {
                 }
                 Some(arg) => match arg.parse::<u64>() {
                     Ok(operand) => {
-                        if line.contains("+") {
+                        if line.contains('+') {
                             op = Some(Box::new(move |x| x + operand));
-                        } else if line.contains("*") {
+                        } else if line.contains('*') {
                             op = Some(Box::new(move |x| x * operand));
                         } else {
                             panic!("unknown operator on the monkey");
@@ -95,8 +95,8 @@ fn parse_troop<'paw>(input: Lines) -> Troop {
     troop
 }
 
-fn round<'round>(troop: &'round mut Troop, fidget: &dyn Fn(u64) -> u64) {
-    for (i, monkey_ref) in troop.iter().enumerate() {
+fn round(troop: &mut Troop, fidget: &dyn Fn(u64) -> u64) {
+    for monkey_ref in troop.iter() {
         let mut monkey = monkey_ref.borrow_mut();
         for value in monkey.items.iter() {
             let high_anxiety = (monkey.op)(*value);
@@ -128,25 +128,25 @@ fn monkey_business(troop: &Troop) -> usize {
 
 fn main() {
     let input = fs::read_to_string("input/011.txt").expect("file read error");
-    let mut troop = &mut parse_troop(input.lines());
+    let troop = &mut parse_troop(input.lines());
 
     println!("there are {} monkeys", troop.len());
     for _ in 0..20 {
-        round(&mut troop, &|w| w / 3);
+        round(troop, &|w| w / 3);
     }
-    println!("the monkey business goes to {}", monkey_business(&troop));
+    println!("the monkey business goes to {}", monkey_business(troop));
 
-    let mut troop = &mut parse_troop(input.lines());
-    let lcm = troop
+    let troop = &mut parse_troop(input.lines());
+    let lcm: u64 = troop
         .iter()
         .map(|m| m.borrow().modulus)
-        .fold(1, |res, a| res * a);
+        .product();
     for _ in 0..10_000 {
-        round(&mut troop, &|w| w % lcm);
+        round(troop, &|w| w % lcm);
     }
     println!(
         "high anxiety monkey business goes to {}",
-        monkey_business(&troop)
+        monkey_business(troop)
     );
 }
 
@@ -187,10 +187,10 @@ mod tests {
     #[test]
     fn test_fidget() {
         let mut troop = &mut parse_troop(SAMPLE.lines());
-        let lcm = troop
+        let lcm: u64 = troop
             .iter()
             .map(|m| m.borrow().modulus)
-            .fold(1, |res, a| res * a);
+            .product();
         println!("{lcm}");
         let clocks = |w| w % lcm;
         round(&mut troop, &clocks);
@@ -217,10 +217,10 @@ mod tests {
     #[test]
     fn test_big_worres() {
         let mut troop = &mut parse_troop(SAMPLE.lines());
-        let lcm = troop
+        let lcm: u64 = troop
             .iter()
             .map(|m| m.borrow().modulus)
-            .fold(1, |res, a| res * a);
+            .product();
         for _ in 0..10_000 {
             round(&mut troop, &|w| w % lcm);
         }
