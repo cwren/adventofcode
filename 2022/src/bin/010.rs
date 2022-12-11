@@ -147,7 +147,7 @@ mod tests {
 addx 3
 addx -5"#;
 
-    const LONG_SAMPLE: &str = include_str!("../input/010-sample.txt");
+    const LONG_SAMPLE: &str = include_str!("../../input/010-sample.txt");
 
     #[test]
     fn test_parse_moves() {

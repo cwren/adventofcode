@@ -3,46 +3,6 @@ name = "advent2022"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "001"
-path = "src/001.rs"
-
-[[bin]]
-name = "002"
-path = "src/002.rs"
-
-[[bin]]
-name = "003"
-path = "src/003.rs"
-
-[[bin]]
-name = "004"
-path = "src/004.rs"
-
-[[bin]]
-name = "005"
-path = "src/005.rs"
-
-[[bin]]
-name = "006"
-path = "src/006.rs"
-
-[[bin]]
-name = "007"
-path = "src/007.rs"
-
-[[bin]]
-name = "008"
-path = "src/008.rs"
-
-[[bin]]
-name = "009"
-path = "src/009.rs"
-
-[[bin]]
-name = "010"
-path = "src/010.rs"
-
 [dependencies]
 regex = "1"
 lazy_static = "1"
