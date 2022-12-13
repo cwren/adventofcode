@@ -1,0 +1,2 @@
+number = { ASCII_DIGIT+ }
+list = { "[" ~  ((list | number) ~ ("," ~ (list | number))*)* ~ "]" }
