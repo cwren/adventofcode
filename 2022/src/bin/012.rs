@@ -74,14 +74,32 @@ impl Map {
     }
 }
 
-fn shortest_path(map: Map) -> usize {
-    let longest = map.longest();
+fn scenic_path(map: &Map) -> usize {
+    let mut candidates = DoublePriorityQueue::new();
+    for (j, row) in map.heights.iter().enumerate() {
+        for (i, h) in row.iter().enumerate() {
+            if *h == 0 {
+                let p = (i as i32, j as i32);
+                candidates.push(p, shortest_path_from_pos(map, p));
+            }
+        }
+    }
+    let (p, l) = candidates.pop_min().expect("found no paths at all");
+    l
+}
+
+fn shortest_path(map: &Map) -> usize {
+    shortest_path_from_pos(map, map.start)
+}
+
+fn shortest_path_from_pos(map: &Map, start: Pos) -> usize {
     // https://en.wikipedia.org/wiki/A*_search_algorithm
+    let longest = map.longest();
     let mut open = DoublePriorityQueue::new();
-    open.push(map.start, map.h(&map.start));
+    open.push(start, map.h(&start));
 
     let mut g_score = HashMap::new();
-    g_score.insert(map.start, 0usize);
+    g_score.insert(start, 0usize);
 
     let mut from = HashMap::new();
 
@@ -96,7 +114,6 @@ fn shortest_path(map: Map) -> usize {
                 p = *q;
             }
             path.reverse();
-            println!("{:?}", path);
             return path.len();
         }
         let current_height = map.get_height(&current);
@@ -123,7 +140,8 @@ fn main() {
     let map = Map::parse(input.lines());
 
     println!("there map is {} units high", map.heights.len());
-    println!("the shortest path is {}", shortest_path(map));
+    println!("the shortest path is {}", shortest_path(&map));
+    println!("the scenic path is {}", scenic_path(&map));
 }
 
 #[cfg(test)]
@@ -150,6 +168,13 @@ abdefghi"#;
     #[test]
     fn test_shortest_path() {
         let map: Map = Map::parse(SAMPLE.lines());
-        assert_eq!(shortest_path(map), 31);
+        assert_eq!(shortest_path(&map), 31);
+    }
+
+
+    #[test]
+    fn test_scenic_path() {
+        let map: Map = Map::parse(SAMPLE.lines());
+        assert_eq!(scenic_path(&map), 29);
     }
 }
