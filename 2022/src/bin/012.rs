@@ -86,19 +86,14 @@ fn shortest_path(map: Map) -> usize {
     let mut from = HashMap::new();
 
     while !open.is_empty() {
-        let (current, dist) = open.pop_min().expect("while says it's not empty");
+        let (current, _) = open.pop_min().expect("while says it's not empty");
         if current == map.end {
             // unwind
             let mut path = Vec::new();
             let mut p = current;
-            loop {
-                match from.get(&p) {
-                    Some(q) => {
-                        path.push(*q);
-                        p = *q;
-                    }
-                    None => break,
-                }
+            while let Some(q) = from.get(&p) {
+                path.push(*q);
+                p = *q;
             }
             path.reverse();
             println!("{:?}", path);
