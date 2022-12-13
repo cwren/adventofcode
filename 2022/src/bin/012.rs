@@ -14,14 +14,15 @@ struct Map {
     h: i32,
 }
 
-
 impl Map {
     fn parse(input: Lines) -> Self {
         let mut heights = Vec::new();
         let mut start = (0, 0);
         let mut end = (0, 0);
         for (j, line) in input.enumerate() {
-            let row: Vec<usize> = line.chars().enumerate()
+            let row: Vec<usize> = line
+                .chars()
+                .enumerate()
                 .map(|(i, c)| match c {
                     'S' => {
                         start = (i as i32, j as i32);
@@ -39,7 +40,13 @@ impl Map {
         }
         let w = heights[0].len() as i32;
         let h = heights.len() as i32;
-        Map { start, end, heights, w, h}
+        Map {
+            start,
+            end,
+            heights,
+            w,
+            h,
+        }
     }
 
     fn get_height(&self, p: &Pos) -> usize {
@@ -58,14 +65,13 @@ impl Map {
         Some(q)
     }
 
-    fn dist(&self, p: &Pos, q: &Pos)-> usize {
+    fn dist(&self, p: &Pos, q: &Pos) -> usize {
         ((p.0 - q.0).abs() + (p.1 - q.1).abs()).try_into().unwrap()
     }
 
-    fn h(&self, p: &Pos)-> usize {
+    fn h(&self, p: &Pos) -> usize {
         self.dist(&self.end, p)
     }
-
 }
 
 fn shortest_path(map: Map) -> usize {
@@ -101,16 +107,16 @@ fn shortest_path(map: Map) -> usize {
         let current_height = map.get_height(&current);
         for offset in [(1, 0), (0, 1), (0, -1), (-1, 0)] {
             if let Some(neighbor) = map.pos_add(&current, &offset) {
-                    let tentative_g_score = if map.get_height(&neighbor) <= (current_height + 1) {
-                        1 + g_score.get(&current).unwrap_or(&longest)
-                    } else {
-                        usize::MAX
-                    };
-                    if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&longest) {
-                        from.insert(neighbor, current);
-                        g_score.insert(neighbor, tentative_g_score);
-                        open.push(neighbor, tentative_g_score + map.h(&neighbor));
-                    }
+                let tentative_g_score = if map.get_height(&neighbor) <= (current_height + 1) {
+                    1 + g_score.get(&current).unwrap_or(&longest)
+                } else {
+                    usize::MAX
+                };
+                if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&longest) {
+                    from.insert(neighbor, current);
+                    g_score.insert(neighbor, tentative_g_score);
+                    open.push(neighbor, tentative_g_score + map.h(&neighbor));
+                }
             }
         }
     }
