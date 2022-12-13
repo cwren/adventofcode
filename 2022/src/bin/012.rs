@@ -84,8 +84,7 @@ fn scenic_path(map: &Map) -> usize {
             }
         }
     }
-    let (p, l) = candidates.pop_min().expect("found no paths at all");
-    l
+    candidates.pop_min().expect("found no paths at all").1
 }
 
 fn shortest_path(map: &Map) -> usize {
