@@ -171,7 +171,6 @@ abdefghi"#;
         assert_eq!(shortest_path(&map), 31);
     }
 
-
     #[test]
     fn test_scenic_path() {
         let map: Map = Map::parse(SAMPLE.lines());
