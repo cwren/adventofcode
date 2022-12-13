@@ -1,4 +1,5 @@
-use std::collections::HashSet;
+use priority_queue::DoublePriorityQueue;
+use std::collections::HashMap;
 use std::fs;
 use std::str::Lines;
 
@@ -57,48 +58,63 @@ impl Map {
         Some(q)
     }
 
-    fn pos_to_index(&self, p: &Pos)-> i32 {
-        p.0 * self.w + p.1
+    fn dist(&self, p: &Pos, q: &Pos)-> usize {
+        ((p.0 - q.0).abs() + (p.1 - q.1).abs()).try_into().unwrap()
+    }
+
+    fn h(&self, p: &Pos)-> usize {
+        self.dist(&self.end, p)
     }
 
 }
 
 fn shortest_path(map: Map) -> usize {
-    let visited = HashSet::new();
-    sp_worker(&map, &map.start, &visited, 0, map.longest())
-}
+    let longest = map.longest();
+    // https://en.wikipedia.org/wiki/A*_search_algorithm
+    let mut open = DoublePriorityQueue::new();
+    open.push(map.start, map.h(&map.start));
 
+    let mut g_score = HashMap::new();
+    g_score.insert(map.start, 0usize);
 
-fn sp_worker(map: &Map, p: &Pos, visited: &HashSet<i32>, depth: i32, too_much: usize) -> usize {
-    if too_much == 0 {
-        return map.longest();
-    }
-    if map.end == *p {
-        println!("found the end!");
-        return 0;
-    }
-    let indent = (0..depth).map(|_| ".").collect::<String>();
-    let from = map.get_height(p);
-    let mut visited = visited.clone();
-    visited.insert(map.pos_to_index(&p));
-    let mut shortest = too_much;
-    for offset in [(1, 0), (0, 1), (0, -1), (-1, 0)] {
-        if let Some(q) = map.pos_add(p, &offset) {
-            if !visited.contains(&map.pos_to_index(&q)) {
-                if map.get_height(&q) <= (from + 1) {
-                    if indent.len() < 50 {
-                        println!("{indent}{:?}:{}", q, shortest);
+    let mut from = HashMap::new();
+
+    while !open.is_empty() {
+        let (current, dist) = open.pop_min().expect("while says it's not empty");
+        if current == map.end {
+            // unwind
+            let mut path = Vec::new();
+            let mut p = current;
+            loop {
+                match from.get(&p) {
+                    Some(q) => {
+                        path.push(*q);
+                        p = *q;
                     }
-                    shortest = shortest.min(sp_worker(&map, &q, &visited, depth + 1, shortest - 1));
-                } else {
-                    if indent.len() < 50 {
-                        println!("{indent}{:?}:too high", q);
-                    }
+                    None => break,
                 }
+            }
+            path.reverse();
+            println!("{:?}", path);
+            return path.len();
+        }
+        let current_height = map.get_height(&current);
+        for offset in [(1, 0), (0, 1), (0, -1), (-1, 0)] {
+            if let Some(neighbor) = map.pos_add(&current, &offset) {
+                    let tentative_g_score = if map.get_height(&neighbor) <= (current_height + 1) {
+                        1 + g_score.get(&current).unwrap_or(&longest)
+                    } else {
+                        usize::MAX
+                    };
+                    if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&longest) {
+                        from.insert(neighbor, current);
+                        g_score.insert(neighbor, tentative_g_score);
+                        open.push(neighbor, tentative_g_score + map.h(&neighbor));
+                    }
             }
         }
     }
-    shortest + 1
+    usize::MAX
 }
 
 fn main() {
