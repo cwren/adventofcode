@@ -101,7 +101,7 @@ impl Cave {
         if self.rock.contains(start) {
             return None;
         }
-        let mut p = start.clone();
+        let mut p = *start;
         while p.y < self.bottom {
             for delta in [Some(Pos::from(0, 1)), Some(Pos::from(-1, 1)), Some(Pos::from(1, 1)), None].iter() {
                 match delta {
@@ -131,7 +131,7 @@ impl Cave {
 
 fn main() {
     let input = fs::read_to_string("input/014.txt").expect("file read error");
-    let scan: Vec<Path> = input.lines().map(|s| Path::from(s)).collect();
+    let scan: Vec<Path> = input.lines().map(Path::from).collect();
     println!("there are {} scans", scan.len());
     let mut cave = Cave::from(&scan);
     println!("the infinite cave held {} grains of sand", cave.fill(&Pos::from(500, 0)));
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_from() {
-        let scan: Vec<Path> = SAMPLE.lines().map(|s| Path::from(s)).collect();
+        let scan: Vec<Path> = SAMPLE.lines().map(Path::from).collect();
         assert_eq!(scan.len(), 2);
         assert_eq!(scan[0].intersections.len(), 3);
         assert_eq!(scan[1].intersections.len(), 4);
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_build_cave() {
-        let scan: Vec<Path> = SAMPLE.lines().map(|s| Path::from(s)).collect();
+        let scan: Vec<Path> = SAMPLE.lines().map(Path::from).collect();
         let cave = Cave::from(&scan);
         assert!(cave.rock.contains(&Pos::from(496, 6)));
         assert!(cave.rock.contains(&Pos::from(498, 4)));
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn test_drop_grain() {
-        let scan: Vec<Path> = SAMPLE.lines().map(|s| Path::from(s)).collect();
+        let scan: Vec<Path> = SAMPLE.lines().map(Path::from).collect();
         let mut cave = Cave::from(&scan);
         assert_eq!(cave.drop_grain(&Pos::from(500, 0)), Some(Pos::from(500, 8)));
         assert_eq!(cave.drop_grain(&Pos::from(500, 0)), Some(Pos::from(499, 8)));
@@ -186,14 +186,14 @@ mod tests {
 
     #[test]
     fn test_fill_cave() {
-        let scan: Vec<Path> = SAMPLE.lines().map(|s| Path::from(s)).collect();
+        let scan: Vec<Path> = SAMPLE.lines().map(Path::from).collect();
         let mut cave = Cave::from(&scan);
         assert_eq!(cave.fill(&Pos::from(500, 0)), 24);
     }
 
     #[test]
     fn test_fill_finite_cave() {
-        let scan: Vec<Path> = SAMPLE.lines().map(|s| Path::from(s)).collect();
+        let scan: Vec<Path> = SAMPLE.lines().map(Path::from).collect();
         let mut cave = Cave::from(&scan);
         cave.assume_hard_floor(2);
         assert_eq!(cave.fill(&Pos::from(500, 0)), 93);
