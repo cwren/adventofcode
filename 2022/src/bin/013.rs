@@ -1,10 +1,10 @@
-use pest::Parser;
+use itertools::EitherOrBoth::{Both, Left, Right};
+use itertools::Itertools;
 use pest::iterators::Pair;
+use pest::Parser;
+use std::cmp::Ordering;
 use std::fs;
 use std::str::Lines;
-use std::cmp::Ordering;
-use itertools::Itertools;
-use itertools::EitherOrBoth::{Both, Left, Right};
 #[macro_use]
 extern crate pest_derive;
 
@@ -15,9 +15,9 @@ struct ListParser;
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Item {
     Number(i32),
-    List(Vec::<Item>),
+    List(Vec<Item>),
 }
-use crate::Item::{Number, List};
+use crate::Item::{List, Number};
 
 impl PartialOrd for Item {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -33,9 +33,9 @@ impl Ord for Item {
                     let tmp = Vec::from([Number(*a)]);
                     List(tmp).cmp(other)
                 }
-            }
+            },
             List(l) => match other {
-                Number(b) =>  {
+                Number(b) => {
                     let tmp = Vec::from([Number(*b)]);
                     self.cmp(&List(tmp))
                 }
@@ -48,12 +48,12 @@ impl Ord for Item {
                                 Ordering::Less => return Ordering::Less,
                                 Ordering::Greater => return Ordering::Greater,
                                 Ordering::Equal => (),
-                            }
+                            },
                         }
                     }
                     Ordering::Equal
                 }
-            }
+            },
         }
     }
 }
@@ -63,7 +63,7 @@ fn unpack_token(token: Pair<Rule>) -> Item {
         Rule::number => return Number(token.as_str().parse().expect("parser says so")),
         Rule::list => {
             let mut items = Vec::new();
-            for inner_token in token.into_inner(){
+            for inner_token in token.into_inner() {
                 items.push(unpack_token(inner_token));
             }
             List(items)
@@ -72,11 +72,11 @@ fn unpack_token(token: Pair<Rule>) -> Item {
 }
 
 fn parse_packets(lines: Lines) -> Vec<Item> {
-    let mut items= Vec::new();
+    let mut items = Vec::new();
     for line in lines {
         if !line.is_empty() {
-            let mut tokens = ListParser::parse(Rule::list, line)
-                .unwrap_or_else(|e| panic!("{}", e));
+            let mut tokens =
+                ListParser::parse(Rule::list, line).unwrap_or_else(|e| panic!("{}", e));
             let item = unpack_token(tokens.next().expect("at least one token per lline"));
             items.push(item);
         }
@@ -85,7 +85,15 @@ fn parse_packets(lines: Lines) -> Vec<Item> {
 }
 
 fn count_correct_orders(items: &[Item]) -> usize {
-    items.iter().tuple_windows().step_by(2).map(|(a,b)| a < b).enumerate().filter(|(_, b)| *b).map(|(n, _)| n + 1).sum()
+    items
+        .iter()
+        .tuple_windows()
+        .step_by(2)
+        .map(|(a, b)| a < b)
+        .enumerate()
+        .filter(|(_, b)| *b)
+        .map(|(n, _)| n + 1)
+        .sum()
 }
 
 fn find_decoder_key(items: &mut Vec<Item>) -> usize {
@@ -94,7 +102,12 @@ fn find_decoder_key(items: &mut Vec<Item>) -> usize {
     items.push(div1.clone());
     items.push(div2.clone());
     items.sort();
-    items.iter().enumerate().filter(|(_, a)| div1.eq(a) || div2.eq(a)).map(|(n, _)| n + 1).product::<usize>()
+    items
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| div1.eq(a) || div2.eq(a))
+        .map(|(n, _)| n + 1)
+        .product::<usize>()
 }
 
 fn main() {
@@ -136,7 +149,16 @@ mod tests {
     #[test]
     fn test_parser() {
         let items: Vec<Item> = parse_packets(SAMPLE.lines());
-        assert_eq!(items[0], List(Vec::from([Number(1), Number(1), Number(3), Number(1), Number(1)])));
+        assert_eq!(
+            items[0],
+            List(Vec::from([
+                Number(1),
+                Number(1),
+                Number(3),
+                Number(1),
+                Number(1)
+            ]))
+        );
     }
 
     #[test]
@@ -152,7 +174,7 @@ mod tests {
         assert!(items[12] > items[13]);
         assert!(items[14] > items[15]);
     }
-    
+
     #[test]
     fn test_count_correct_orders() {
         let items: Vec<Item> = parse_packets(SAMPLE.lines());
