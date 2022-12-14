@@ -13,6 +13,7 @@ struct Pos {
 struct Cave {
     rock: HashSet<Pos>,
     bottom: i32,
+    limitless: bool
 }
 
 struct Path {
@@ -80,11 +81,12 @@ impl Cave {
                 bottom = bottom.max(p.y);
             }
         }
-        Cave { rock, bottom }
+        Cave { rock, bottom, limitless: true}
     }
 
-    fn contains(&self, p: &Pos) -> bool {
-        self.rock.contains(p)
+    fn assume_hard_floor(&mut self, gap: i32) {
+        self.bottom += gap - 1;
+        self.limitless = false;
     }
 
     fn fill(&mut self, start: &Pos) -> usize {
@@ -96,13 +98,16 @@ impl Cave {
     }
 
     fn drop_grain(&mut self, start: &Pos) -> Option<Pos> {
+        if self.rock.contains(start) {
+            return None;
+        }
         let mut p = start.clone();
         while p.y < self.bottom {
             for delta in [Some(Pos::from(0, 1)), Some(Pos::from(-1, 1)), Some(Pos::from(1, 1)), None].iter() {
                 match delta {
                     Some(d) => {
                         let q = p + d;
-                        if !self.contains(&q) {
+                        if !self.rock.contains(&q) {
                             p = q;
                             break;
                         }
@@ -114,7 +119,12 @@ impl Cave {
                 }
             }
         }
-        None
+        if self.limitless {
+            None
+        } else {
+            self.rock.insert(p);
+            Some(p)
+        }
     }
 }
 
@@ -124,7 +134,11 @@ fn main() {
     let scan: Vec<Path> = input.lines().map(|s| Path::from(s)).collect();
     println!("there are {} scans", scan.len());
     let mut cave = Cave::from(&scan);
-    println!("the cave held {} grains of sand", cave.fill(&Pos::from(500, 0)));
+    println!("the infinite cave held {} grains of sand", cave.fill(&Pos::from(500, 0)));
+
+    let mut cave = Cave::from(&scan);
+    cave.assume_hard_floor(2);
+    println!("the finite cave held {} grains of sand", cave.fill(&Pos::from(500, 0)));
 }
 
 #[cfg(test)]
@@ -146,11 +160,11 @@ mod tests {
     fn test_build_cave() {
         let scan: Vec<Path> = SAMPLE.lines().map(|s| Path::from(s)).collect();
         let cave = Cave::from(&scan);
-        assert!(cave.contains(&Pos::from(496, 6)));
-        assert!(cave.contains(&Pos::from(498, 4)));
-        assert!(cave.contains(&Pos::from(502, 7)));
-        assert!(cave.contains(&Pos::from(503, 4)));
-        assert!(!cave.contains(&Pos::from(500, 6)));
+        assert!(cave.rock.contains(&Pos::from(496, 6)));
+        assert!(cave.rock.contains(&Pos::from(498, 4)));
+        assert!(cave.rock.contains(&Pos::from(502, 7)));
+        assert!(cave.rock.contains(&Pos::from(503, 4)));
+        assert!(!cave.rock.contains(&Pos::from(500, 6)));
         assert_eq!(cave.rock.len(), 20);
         assert_eq!(cave.bottom, 9);
     }
@@ -175,5 +189,13 @@ mod tests {
         let scan: Vec<Path> = SAMPLE.lines().map(|s| Path::from(s)).collect();
         let mut cave = Cave::from(&scan);
         assert_eq!(cave.fill(&Pos::from(500, 0)), 24);
+    }
+
+    #[test]
+    fn test_fill_finite_cave() {
+        let scan: Vec<Path> = SAMPLE.lines().map(|s| Path::from(s)).collect();
+        let mut cave = Cave::from(&scan);
+        cave.assume_hard_floor(2);
+        assert_eq!(cave.fill(&Pos::from(500, 0)), 93);
     }
 }
