@@ -3,26 +3,25 @@ use std::collections::HashSet;
 use std::fs;
 use std::ops;
 
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Pos {
     x: i32,
-    y: i32,   
+    y: i32,
 }
 
 struct Cave {
     rock: HashSet<Pos>,
     bottom: i32,
-    limitless: bool
+    limitless: bool,
 }
 
 struct Path {
-    intersections: Vec<Pos>
+    intersections: Vec<Pos>,
 }
 
 impl Pos {
     fn from(x: i32, y: i32) -> Self {
-        Pos {x, y}
+        Pos { x, y }
     }
 }
 
@@ -50,8 +49,16 @@ impl From<&str> for Path {
         for point in points {
             let mut coords = point.split(',');
             intersections.push(Pos::from(
-                coords.next().expect("too few coordinates in a point").parse().expect("unable to parse integer"),
-                coords.next().expect("too few coordinates in a point").parse().expect("unable to parse integer"),
+                coords
+                    .next()
+                    .expect("too few coordinates in a point")
+                    .parse()
+                    .expect("unable to parse integer"),
+                coords
+                    .next()
+                    .expect("too few coordinates in a point")
+                    .parse()
+                    .expect("unable to parse integer"),
             ));
         }
         Path { intersections }
@@ -64,10 +71,7 @@ impl Cave {
         let mut rock = HashSet::new();
         for path in paths {
             for (start, end) in path.intersections.iter().tuple_windows() {
-                let delta = Pos::from(
-                    (end.x - start.x).signum(),
-                    (end.y - start.y).signum(),
-                );
+                let delta = Pos::from((end.x - start.x).signum(), (end.y - start.y).signum());
                 if delta.x.abs() == 1 && delta.y.abs() == 1 {
                     panic!("diagonal path");
                 }
@@ -81,7 +85,11 @@ impl Cave {
                 bottom = bottom.max(p.y);
             }
         }
-        Cave { rock, bottom, limitless: true}
+        Cave {
+            rock,
+            bottom,
+            limitless: true,
+        }
     }
 
     fn assume_hard_floor(&mut self, gap: i32) {
@@ -103,7 +111,14 @@ impl Cave {
         }
         let mut p = *start;
         while p.y < self.bottom {
-            for delta in [Some(Pos::from(0, 1)), Some(Pos::from(-1, 1)), Some(Pos::from(1, 1)), None].iter() {
+            for delta in [
+                Some(Pos::from(0, 1)),
+                Some(Pos::from(-1, 1)),
+                Some(Pos::from(1, 1)),
+                None,
+            ]
+            .iter()
+            {
                 match delta {
                     Some(d) => {
                         let q = p + d;
@@ -111,11 +126,11 @@ impl Cave {
                             p = q;
                             break;
                         }
-                    },
+                    }
                     None => {
                         self.rock.insert(p);
                         return Some(p);
-                    },
+                    }
                 }
             }
         }
@@ -128,17 +143,22 @@ impl Cave {
     }
 }
 
-
 fn main() {
     let input = fs::read_to_string("input/014.txt").expect("file read error");
     let scan: Vec<Path> = input.lines().map(Path::from).collect();
     println!("there are {} scans", scan.len());
     let mut cave = Cave::from(&scan);
-    println!("the infinite cave held {} grains of sand", cave.fill(&Pos::from(500, 0)));
+    println!(
+        "the infinite cave held {} grains of sand",
+        cave.fill(&Pos::from(500, 0))
+    );
 
     let mut cave = Cave::from(&scan);
     cave.assume_hard_floor(2);
-    println!("the finite cave held {} grains of sand", cave.fill(&Pos::from(500, 0)));
+    println!(
+        "the finite cave held {} grains of sand",
+        cave.fill(&Pos::from(500, 0))
+    );
 }
 
 #[cfg(test)]
@@ -175,9 +195,13 @@ mod tests {
         let mut cave = Cave::from(&scan);
         assert_eq!(cave.drop_grain(&Pos::from(500, 0)), Some(Pos::from(500, 8)));
         assert_eq!(cave.drop_grain(&Pos::from(500, 0)), Some(Pos::from(499, 8)));
-        for _ in 2..4 { cave.drop_grain(&Pos::from(500, 0)); }
+        for _ in 2..4 {
+            cave.drop_grain(&Pos::from(500, 0));
+        }
         assert_eq!(cave.drop_grain(&Pos::from(500, 0)), Some(Pos::from(498, 8)));
-        for _ in 5..21 { cave.drop_grain(&Pos::from(500, 0)); }
+        for _ in 5..21 {
+            cave.drop_grain(&Pos::from(500, 0));
+        }
         assert_eq!(cave.drop_grain(&Pos::from(500, 0)), Some(Pos::from(500, 2)));
         assert!(cave.drop_grain(&Pos::from(500, 0)).is_some());
         assert!(cave.drop_grain(&Pos::from(500, 0)).is_some());
