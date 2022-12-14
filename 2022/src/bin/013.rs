@@ -14,11 +14,10 @@ struct ListParser;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Item {
-    Empty,
     Number(i32),
     List(Vec::<Item>),
 }
-use crate::Item::{Empty, Number, List};
+use crate::Item::{Number, List};
 
 impl PartialOrd for Item {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -28,37 +27,31 @@ impl PartialOrd for Item {
 impl Ord for Item {
     fn cmp(&self, other: &Self) -> Ordering {
         match self {
-            Empty => match other {
-                Empty => Ordering::Equal,
-                _ => Ordering::Less,
-            },
             Number(a) => match other {
-                Empty => Ordering::Greater,
                 Number(b) => a.cmp(b),
-                List(l) => {
+                List(_) => {
                     let tmp = Vec::from([Number(*a)]);
-                    return List(tmp).cmp(other);
+                    List(tmp).cmp(other)
                 }
             }
             List(l) => match other {
-                Empty => Ordering::Greater,
                 Number(b) =>  {
                     let tmp = Vec::from([Number(*b)]);
-                    return self.cmp(&List(tmp));
+                    self.cmp(&List(tmp))
                 }
                 List(m) => {
                     for pair in l.iter().zip_longest(m) {
                         match pair {
                             Left(_) => return Ordering::Greater,
                             Right(_) => return Ordering::Less,
-                            Both(a, b) => match a.cmp(&b) {
+                            Both(a, b) => match a.cmp(b) {
                                 Ordering::Less => return Ordering::Less,
                                 Ordering::Greater => return Ordering::Greater,
                                 Ordering::Equal => (),
                             }
                         }
                     }
-                    return Ordering::Equal;
+                    Ordering::Equal
                 }
             }
         }
@@ -73,7 +66,7 @@ fn unpack_token(token: Pair<Rule>) -> Item {
             for inner_token in token.into_inner(){
                 items.push(unpack_token(inner_token));
             }
-            return List(items);
+            List(items)
         }
     }
 }
@@ -91,8 +84,8 @@ fn parse_packets(lines: Lines) -> Vec<Item> {
     items
 }
 
-fn count_correct_orders(items: &Vec<Item>) -> usize {
-    items.iter().tuple_windows().step_by(2).map(|(a,b)| a < b).enumerate().filter(|(n, b)| *b).map(|(n, b)| n + 1).sum()
+fn count_correct_orders(items: &[Item]) -> usize {
+    items.iter().tuple_windows().step_by(2).map(|(a,b)| a < b).enumerate().filter(|(_, b)| *b).map(|(n, _)| n + 1).sum()
 }
 
 fn find_decoder_key(items: &mut Vec<Item>) -> usize {
