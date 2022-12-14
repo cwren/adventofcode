@@ -95,11 +95,22 @@ fn count_correct_orders(items: &Vec<Item>) -> usize {
     items.iter().tuple_windows().step_by(2).map(|(a,b)| a < b).enumerate().filter(|(n, b)| *b).map(|(n, b)| n + 1).sum()
 }
 
+fn find_decoder_key(items: &mut Vec<Item>) -> usize {
+    let div1 = List(Vec::from([List(Vec::from([Number(2)]))]));
+    let div2 = List(Vec::from([List(Vec::from([Number(6)]))]));
+    items.push(div1.clone());
+    items.push(div2.clone());
+    items.sort();
+    items.iter().enumerate().filter(|(_, a)| div1.eq(a) || div2.eq(a)).map(|(n, _)| n + 1).product::<usize>()
+}
+
 fn main() {
     let input = fs::read_to_string("input/013.txt").expect("file read error");
     println!("there are {} lines", input.lines().count());
-    let items: Vec<Item> = parse_packets(input.lines());
+    let mut items: Vec<Item> = parse_packets(input.lines());
     println!("ordering score is {}", count_correct_orders(&items));
+
+    println!("decoder key is {}", find_decoder_key(&mut items));
 }
 
 #[cfg(test)]
@@ -153,5 +164,11 @@ mod tests {
     fn test_count_correct_orders() {
         let items: Vec<Item> = parse_packets(SAMPLE.lines());
         assert_eq!(count_correct_orders(&items), 13);
+    }
+
+    #[test]
+    fn test_find_decoder_key() {
+        let mut items: Vec<Item> = parse_packets(SAMPLE.lines());
+        assert_eq!(find_decoder_key(&mut items), 140);
     }
 }
