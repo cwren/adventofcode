@@ -2,7 +2,7 @@ use itertools::EitherOrBoth::{Both, Left, Right};
 use itertools::Itertools;
 use pest::iterators::Pair;
 use pest::Parser;
-use std::cmp::Ordering;
+use std::cmp::{Ordering, Ordering::Equal, Ordering::Greater, Ordering::Less};
 use std::fs;
 use std::str::Lines;
 #[macro_use]
@@ -42,16 +42,16 @@ impl Ord for Item {
                 List(m) => {
                     for pair in l.iter().zip_longest(m) {
                         match pair {
-                            Left(_) => return Ordering::Greater,
-                            Right(_) => return Ordering::Less,
+                            Left(_) => return Greater,
+                            Right(_) => return Less,
                             Both(a, b) => match a.cmp(b) {
-                                Ordering::Less => return Ordering::Less,
-                                Ordering::Greater => return Ordering::Greater,
-                                Ordering::Equal => (),
+                                Less => return Less,
+                                Greater => return Greater,
+                                Equal => (),
                             },
                         }
                     }
-                    Ordering::Equal
+                    Equal
                 }
             },
         }
