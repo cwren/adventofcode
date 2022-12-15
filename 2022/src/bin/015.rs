@@ -33,11 +33,10 @@ impl From<&str> for Sensor {
                     cap.get(3).expect("too few numbers").as_str().parse::<i32>().expect("not a number"),
                     cap.get(4).expect("too few numbers").as_str().parse::<i32>().expect("not a number")
                 ];
-                return Sensor { p, b, r: manhattan(p, b) }
-
+                Sensor { p, b, r: manhattan(p, b) }
             }
             None => panic!("unparsable input: {}", s),
-        };
+        }
     }
 }
 
@@ -122,9 +121,9 @@ fn simplify(mut spans: Vec<Span>) -> Vec<Span> {
     spans
 }
 
-fn spans_at(sensors: &Vec<Sensor>, row: i32) -> Vec<Span> {
+fn spans_at(sensors: &[Sensor], row: i32) -> Vec<Span> {
     let mut spans = Vec::new();
-    for sensor in &sensors[..] {
+    for sensor in sensors {
         if let Some(span) = sensor.coverage_at(row) {
             spans.push(span);
         }
@@ -132,18 +131,18 @@ fn spans_at(sensors: &Vec<Sensor>, row: i32) -> Vec<Span> {
     simplify(spans)
 }
 
-fn covered_area_at(sensors: &Vec<Sensor>, row: i32) -> usize {
-    let spans = spans_at(&sensors, row);
+fn covered_area_at(sensors: &[Sensor], row: i32) -> usize {
+    let spans = spans_at(sensors, row);
     let total_area = spans.iter().map(Span::len).sum::<usize>();
     let beacons_on_row = sensors.iter().filter(|s| s.b[1] == row).map(|s| s.b).unique().count();
     total_area - beacons_on_row
 }
 
-fn holes_on_row(sensors: &Vec<Sensor>, row: i32, window: &Span) -> Option<Coord> {
-    let spans = spans_at(&sensors, row);
+fn holes_on_row(sensors: &[Sensor], row: i32, window: &Span) -> Option<Coord> {
+    let spans = spans_at(sensors, row);
     let mut windowed = Vec::new();
     for span in spans.iter() {
-        if let Some(intersection) = window.intersect(&span) {
+        if let Some(intersection) = window.intersect(span) {
             windowed.push(intersection);
         }
     }
@@ -163,13 +162,13 @@ fn holes_on_row(sensors: &Vec<Sensor>, row: i32, window: &Span) -> Option<Coord>
     Some([a.e + 1, row])
 }
 
-fn find_frequency(sensors: &Vec<Sensor>, window: &Span) -> Option<i64> {
+fn find_frequency(sensors: &[Sensor], window: &Span) -> Option<i64> {
     for y in window.s..(window.e + 1) {
         if let Some(hole) = holes_on_row(sensors, y, window) {
             return Some(4_000_000 * hole[0] as i64 + hole[1] as i64);
         }
     }
-    return None
+    None
 }
 
 fn main() {
