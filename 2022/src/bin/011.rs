@@ -137,6 +137,7 @@ fn main() {
     println!("the monkey business goes to {}", monkey_business(troop));
 
     let troop = &mut parse_troop(input.lines());
+    // from https://github.com/rtsuk/advent_of_code_2022/blob/master/src/bin/day11.rs#L221
     let lcm: u64 = troop
         .iter()
         .map(|m| m.borrow().modulus)

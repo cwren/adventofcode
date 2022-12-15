@@ -54,7 +54,7 @@ impl Sensor {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 struct Span {
     s: i32,
     e: i32,
@@ -78,20 +78,24 @@ impl Span {
             false => Err("spans do not overlap"),
         }
     }
+    fn intersect(&self, other: &Span) -> Option<Span> {
+        match self.overlaps(other) {
+            true => Some(
+                Span {
+                    s: self.s.max(other.s),
+                    e: self.e.min(other.e),
+                }
+            ),
+            false =>None,
+        }
+    }
 
     fn len(&self) -> usize {
         (self.e - self.s + 1) as usize
     }
 }
 
-fn covered_area_at(sensors: Vec<Sensor>, row: i32) -> usize {
-    let mut spans = Vec::new();
-    for sensor in &sensors[..] {
-        if let Some(span) = sensor.coverage_at(row) {
-            spans.push(span);
-        }
-    }
-    let found = false;
+fn simplify(mut spans: Vec<Span>) -> Vec<Span> {
     loop {
         let mut a_idx = 0;
         let mut b_idx = 0;
@@ -114,16 +118,67 @@ fn covered_area_at(sensors: Vec<Sensor>, row: i32) -> usize {
             spans.push(a.union(&b).expect("checked for overlap above"));
         }
     }
+    spans.sort();
+    spans
+}
+
+fn spans_at(sensors: &Vec<Sensor>, row: i32) -> Vec<Span> {
+    let mut spans = Vec::new();
+    for sensor in &sensors[..] {
+        if let Some(span) = sensor.coverage_at(row) {
+            spans.push(span);
+        }
+    }
+    simplify(spans)
+}
+
+fn covered_area_at(sensors: &Vec<Sensor>, row: i32) -> usize {
+    let spans = spans_at(&sensors, row);
     let total_area = spans.iter().map(Span::len).sum::<usize>();
     let beacons_on_row = sensors.iter().filter(|s| s.b[1] == row).map(|s| s.b).unique().count();
     total_area - beacons_on_row
+}
+
+fn holes_on_row(sensors: &Vec<Sensor>, row: i32, window: &Span) -> Option<Coord> {
+    let spans = spans_at(&sensors, row);
+    let mut windowed = Vec::new();
+    for span in spans.iter() {
+        if let Some(intersection) = window.intersect(&span) {
+            windowed.push(intersection);
+        }
+    }
+    windowed = simplify(windowed);
+    if windowed.len() == 1 {
+        let span = spans.get(0).expect("windowed.len() > 1");
+        if span.s > window.s { 
+            return Some([window.s, row]);
+        } else if span.e < window.e {
+            return Some([span.e + 1, row]);
+        } else {
+            return None;
+        }    
+    }
+    let mut spans = windowed.iter();
+    let a = spans.next().expect("windowed.len() > 1");
+    Some([a.e + 1, row])
+}
+
+fn find_frequency(sensors: &Vec<Sensor>, window: &Span) -> Option<i64> {
+    for y in window.s..(window.e + 1) {
+        if let Some(hole) = holes_on_row(sensors, y, window) {
+            return Some(4_000_000 * hole[0] as i64 + hole[1] as i64);
+        }
+    }
+    return None
 }
 
 fn main() {
     let input = fs::read_to_string("input/015.txt").expect("file read error");
     let sensors: Vec<Sensor> = input.lines().map(Sensor::from).collect();
     println!("there are {} sensors", sensors.len());
-    println!("there are {} excluded locations", covered_area_at(sensors, 2000000));
+    
+    println!("there are {} excluded locations", covered_area_at(&sensors, 2_000_000));
+    println!("The tuning frequency is {}", find_frequency(&sensors, &Span {s:0, e:4_000_000}).unwrap_or(0));
 }
 
 #[cfg(test)]
@@ -186,9 +241,40 @@ fn test_regex() {
         assert_eq!(Span{ s:2, e:14 }.union(&Span {s: 8, e:24}), Ok(Span{ s:2, e:24 }));
         assert_eq!(Span{ s:8, e:24 }.union(&Span {s: 2, e:14}), Ok(Span{ s:2, e:24 }));
     }
+
+    #[test]
+    fn test_intersect() {
+        assert!(Span{ s:2, e:14 }.intersect(&Span {s: 20, e:24}).is_none());
+        assert_eq!(Span{ s:2, e:14 }.intersect(&Span {s: 8, e:24}), Some(Span{ s:8, e:14 }));
+        assert_eq!(Span{ s:8, e:24 }.intersect(&Span {s: 2, e:14}), Some(Span{ s:8, e:14 }));
+    }
+
+    #[test]
+    fn test_simplify() {
+        assert_eq!(simplify(vec![Span{ s:2, e:14 }, Span {s: 20, e:24}]), vec![Span{ s:2, e:14 }, Span {s: 20, e:24}]);
+        assert_eq!(simplify(vec![Span{ s:2, e:14 }, Span {s: 8, e:24}]), vec![Span{ s:2, e:24 }]);
+        assert_eq!(simplify(vec![Span{ s:8, e:24 }, Span {s: 2, e:14}]), vec![Span{ s:2, e:24}]);
+    }
+    
     #[test]
     fn test_covered_area_at() {
         let sensors: Vec<Sensor> = SAMPLE.lines().map(Sensor::from).collect();
-        assert_eq!(covered_area_at(sensors, 10), 26);
+        assert_eq!(covered_area_at(&sensors, 10), 26);
+    }
+    
+    #[test]
+    fn test_holes_on_row() {
+        let sensors: Vec<Sensor> = SAMPLE.lines().map(Sensor::from).collect();
+        assert_eq!(holes_on_row(&sensors, 9, &Span {s:0, e:20}), None);
+        assert_eq!(holes_on_row(&sensors, 10, &Span {s:0, e:20}), None);
+        assert_eq!(holes_on_row(&sensors, 11, &Span {s:0, e:20}), Some([14, 11]));
+        assert_eq!(holes_on_row(&sensors, 10, &Span {s:0, e:25}), Some([25, 10]));
+        assert_eq!(holes_on_row(&sensors, 9, &Span {s:0, e:25}), Some([24, 9]));
+    }
+    
+    #[test]
+    fn test_find_frequency() {
+        let sensors: Vec<Sensor> = SAMPLE.lines().map(Sensor::from).collect();
+        assert_eq!(find_frequency(&sensors, &Span {s:0, e:20}), Some(56000011));
     }
 }
