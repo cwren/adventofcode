@@ -1,14 +1,15 @@
 use lazy_static::lazy_static;
-use std::fs;
-use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::{fs, fmt};
+use std::collections::{HashMap, HashSet, VecDeque};
 use regex::Regex;
-use priority_queue::PriorityQueue;
 
-type Label = String;
+type Label = u64;
+type MoveLabel = u64;
 
 #[derive(Debug)]
 struct Valve {
-    label: Label,
+    key: Label,
     rate: u32,
     tunnels: Vec<Label>,
     open: bool,
@@ -19,13 +20,51 @@ struct Network {
     valves: HashMap<Label, Valve>,
 }
 
+#[derive(Clone)]
 enum Action {
-     Open(String),
-     Move(String)
+     Open(Label),
+     Move(Label),
+     Wait
 }
-use Action::{Open, Move};
+use Action::{Open, Move, Wait};
 
-type Plan = Vec<Action>;
+impl fmt::Debug for Action {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Open(v) => write!(f, "Open({})", Valve::label(*v)),
+            Move(v) => write!(f, "Move({})", Valve::label(*v)),
+            Wait => write!(f, "Wait"),
+        }
+    }
+}
+fn make_action(m: &str, t: &str) -> Action {
+    let t = Valve::key(t);
+    match m {
+        "Move" => Move(t),
+        "Open" => Open(t),
+        _ => panic!("unknown action")
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Plan {
+    actions: VecDeque<Action>,
+    score: u32,
+}
+
+impl Valve {
+    fn key(label: &str) -> Label {
+        label.bytes().filter(|b| *b < 128u8).fold(0, |sum, b| (sum << 8) + (b as Label))
+    }
+    fn label(key: Label) -> String {
+        unsafe {
+            [char::from_u32_unchecked((key >> 8) as u32), char::from_u32_unchecked((key % 256) as u32)].iter().collect()
+        }
+    }
+    fn keys(labels: &[&str]) -> Vec<Label> {
+        labels.iter().map(|s| Valve::key(s)).collect()
+    }
+}
 
 lazy_static! {
     static ref RE: regex::Regex =
@@ -38,10 +77,9 @@ impl From<&str> for Valve {
         // Valve AA has flow rate=0; tunnels lead to valves DD, II, BB
         match RE.captures(s) {
             Some(cap) => {
-                let label = cap.get(1)
+                let key = Valve::key(cap.get(1)
                     .expect("too few capture groups")
-                    .as_str()
-                    .to_string();
+                    .as_str());
                 let rate = cap.get(2)
                     .expect("too few capture groups")
                     .as_str()
@@ -51,10 +89,10 @@ impl From<&str> for Valve {
                     .expect("too few capture groups")
                     .as_str()
                     .split(", ")
-                    .map(String::from)
+                    .map(Valve::key)
                     .collect();
                 Valve {
-                    label,
+                    key,
                     rate,
                     tunnels,
                     open: false,
@@ -70,48 +108,49 @@ impl From<std::str::Lines<'_>> for Network {
         let mut valves = HashMap::new();
         for line in input {
             let valve = Valve::from(line);
-            valves.insert(valve.label.clone(), valve);
+            valves.insert(valve.key, valve);
         }
         Network { valves }
     }
 }
 
 impl Network {
+    fn get(&self, label: &str) -> Option<&Valve> {
+        self.valves.get(&Valve::key(label))
+    }
+
     fn execute_plan(&self, plan: &Plan) -> Result<u32, &str> {
-        if plan.len() > 30 {
+        if plan.actions.len() > 30 {
             return Err("plan is too long!");
         }
         let mut rate = 0;
         let mut total = 0;
-        let mut actions = plan.iter();
-        let mut here = self.valves.get("AA").expect("AA must exist");
-        for t in 0..30 {
+        let mut here = self.valves.get(&Valve::key("AA")).expect("AA must exist");
+        for action in plan.actions.iter() {
             total += rate;
-            match actions.next() {
-                Some(action) => match action {
-                    Action::Open(valve) => {
-                        if valve != &here.label {
-                            return Err("can't open valve from another room");
-                        }
-                        if here.open {
-                            return Err("Valve is already open!");
-                        }
-                        rate += here.rate;
-                    },
-                    Action::Move(valve) => {
-                        if !here.tunnels.contains(valve) {
-                            return Err("can't get there from here!");
-                        }
-                        here = self.valves.get(valve).expect("unknwon node");
-                    },
+            match action {
+                Open(valve) => {
+                    if valve != &here.key {
+                        return Err("can't open valve from another room");
+                    }
+                    if here.open {
+                        return Err("Valve is already open!");
+                    }
+                    rate += here.rate;
                 },
-                None => (),
+                Move(valve) => {
+                    if !here.tunnels.contains(valve) {
+                        return Err("can't get there from here!");
+                    }
+                    here = self.valves.get(valve).expect("unknwon node");
+                },
+                Wait => (),
             }
         }
         Ok(total)
     }
 
-    fn h(&self, id: &str) -> u32{ 
+    fn h(&self, id: &Label) -> u32{ 
         // my rate if closed, or best discounted rate of closed neighbors 
         let mut h = 0;
         if let Some(valve) = self.valves.get(id) {
@@ -133,62 +172,79 @@ impl Network {
         self.valves.iter().all(|(_, v)| v.open)
     }
 
-    fn optimal_plan(&self, start: &str) -> Option<Plan> {
-        // https://en.wikipedia.org/wiki/A*_search_algorithm
-        let longest = self.valves.len() as u32;
-        let mut open = PriorityQueue::new();
-        open.push(start, self.h(&start));
-
-        let mut g_score = HashMap::new();
-        g_score.insert(start.to_string(), 0u32);
-
-        let mut from = HashMap::new();
-
-        while !open.is_empty() {
-            let (current, _) = open.pop().expect("while says it's not empty");
-            let plan = unwind(current, &from);
-            if self.all_open() || plan.len() == 30 {
-                return Some(plan);
+    fn move_label(depth: &usize, action: &Action) -> MoveLabel {
+        ((*depth as u64) << (32 as MoveLabel)) + 
+            match action {
+                Open(key) => *key as MoveLabel + 1 << 16,
+                Move(key) => *key as MoveLabel,
+                Wait => 0
             }
-            let valve = self.valves.get(current).expect("unknown valve");
-            for next in valve.tunnels.iter() {
-                if let Some(neighbor) = self.valves.get(next) {
-                    let mut tentative_g_score = 
-                        g_score.get(current).unwrap_or(&longest) +
-                        if neighbor.open { 1 } else { 2 };
-                    if tentative_g_score < *g_score.get(next).unwrap_or(&longest) {
-                        from.insert(next.clone(), current.to_string());
-                        g_score.insert(next.clone(), tentative_g_score);
-                        open.push(&next, tentative_g_score + self.h(&next));
-                    }
+    }
+
+    fn optimal_plan(&self, start: &str) -> Plan {
+        let start = Valve::key(start);
+        let (_, plan) = self.optimal_plan_worker(start, 0, 0, 30, &HashSet::new(), &mut HashMap::new());
+        println!("{:?}", plan);
+        plan
+    }
+
+    fn optimal_plan_worker(&self, start: Label, pressure: u32, rate: u32, depth: usize, open: &HashSet<Label>, memo: &mut HashMap<MoveLabel, Plan>)
+    -> (HashMap<MoveLabel, Plan>, Plan) {
+        let prefix = std::iter::repeat(" ").take(30 - depth).collect::<String>();
+        println!("{prefix} at {depth}");
+        if depth == 0 {
+            return (memo.clone(), Plan { actions: VecDeque::new(), score: pressure});
+        }
+        let pressure = pressure + rate;
+        let start = self.valves.get(&start).expect("unknwon valve");
+        let mut best_plan = Plan { actions: VecDeque::new(), score: 0 }; 
+        if !open.contains(&start.key) {
+            let action = Open(start.key);
+            println!("{prefix}consider {:?}", action);
+            let movelabel = Self::move_label(&depth, &action);
+            if let Some(remembered_plan) = memo.get(&movelabel) {
+                if remembered_plan.score > best_plan.score {
+                    best_plan = remembered_plan.clone();
+                }
+            } else {
+                let mut open = open.clone();
+                open.insert(start.key);
+                let mut new_plan = Plan { actions: VecDeque::new(), score: 0 };
+                (*memo, new_plan) = self.optimal_plan_worker(start.key, pressure, rate + start.rate, depth - 1, &open, memo);
+                if new_plan.score > best_plan.score {
+                    new_plan.actions.push_front(action);
+                    memo.insert(movelabel, new_plan.clone());
+                    best_plan = new_plan;
                 }
             }
         }
-        None
-    }
-
-
-}
-
-fn unwind<'path>(current: &str, from: &HashMap<String, String>) -> Plan {
-    let mut path = Vec::new();
-    let mut p = current;
-    while let Some(q) = from.get(p) {
-        if p == *q {
-            path.push(Action::Open(q.to_string()));
-        } else { 
-            path.push(Action::Move(q.to_string()));
+        for id in start.tunnels.iter() {
+            let action = Move(*id);
+            println!("{prefix}consider {:?}", action);
+            let movelabel = Self::move_label(&depth, &action);
+            if let Some(remembered_plan) = memo.get(&movelabel) {
+                if remembered_plan.score > best_plan.score {
+                    best_plan = remembered_plan.clone();
+                }
+            } else {
+                let mut new_plan = Plan { actions: VecDeque::new(), score: 0 };
+                (*memo, new_plan) = self.optimal_plan_worker(*id, pressure, rate, depth - 1, &open, memo);
+                if new_plan.score > best_plan.score {
+                    new_plan.actions.push_front(action);
+                    memo.insert(movelabel, new_plan.clone());
+                    best_plan = new_plan;
+                }
+            }
         }
-        p = q;
+        (memo.clone(), best_plan.clone())
     }
-    path.reverse();
-    path
 }
 
 fn main() {
     let input = fs::read_to_string("input/016.txt").expect("file read error");
     let network: Network = Network::from(input.lines());
     println!("there are {} valves", network.valves.len());
+    println!("the optimal plan releases {} inches of pressure", network.optimal_plan("AA").score);
 }
 
 #[cfg(test)]
@@ -233,49 +289,64 @@ fn test_regex() {
     fn test_parse() {
         let network: Network = Network::from(SAMPLE.lines());
         assert_eq!(network.valves.len(), 10);
-        assert_eq!(network.valves.get("AA").unwrap().rate, 0);
-        assert_eq!(network.valves.get("AA").unwrap().tunnels, Vec::from(["DD", "II", "BB"]));
-        assert_eq!(network.valves.get("BB").unwrap().rate, 13);
-        assert_eq!(network.valves.get("BB").unwrap().tunnels, Vec::from(["CC", "AA"]));
-        assert_eq!(network.valves.get("JJ").unwrap().rate, 21);
-        assert_eq!(network.valves.get("JJ").unwrap().tunnels, Vec::from(["II"]));
+        assert_eq!(network.get("AA").unwrap().rate, 0);
+        assert_eq!(network.get("AA").unwrap().tunnels, Valve::keys(&["DD", "II", "BB"]));
+        assert_eq!(network.get("BB").unwrap().rate, 13);
+        assert_eq!(network.get("BB").unwrap().tunnels, Valve::keys(&["CC", "AA"]));
+        assert_eq!(network.get("JJ").unwrap().rate, 21);
+        assert_eq!(network.get("JJ").unwrap().tunnels, Valve::keys(&["II"]));
     }
 
-    #[test]
+#[test]
+    fn test_valve_key() {
+        assert_eq!(Valve::key("AA"), 16705);
+        assert_eq!(Valve::label(Valve::key("AA")), "AA");
+        assert_eq!(Valve::label(Valve::key("IQ")), "IQ");
+    }
+
+#[test]
     fn test_execute_plan() {
         let network: Network = Network::from(SAMPLE.lines());
-        let plan = Vec::from([
-            Move("DD".to_string()),
-            Open("DD".to_string()),
-            Move("CC".to_string()),
-            Move("BB".to_string()),
-            Open("BB".to_string()),
-            Move("AA".to_string()),
-            Move("II".to_string()),
-            Move("JJ".to_string()),
-            Open("JJ".to_string()),
-            Move("II".to_string()),
-            Move("AA".to_string()),
-            Move("DD".to_string()),
-            Move("EE".to_string()),
-            Move("FF".to_string()),
-            Move("GG".to_string()),
-            Move("HH".to_string()),
-            Open("HH".to_string()),
-            Move("GG".to_string()),
-            Move("FF".to_string()),
-            Move("EE".to_string()),
-            Open("EE".to_string()),
-            Move("DD".to_string()),
-            Move("CC".to_string()),
-            Open("CC".to_string()),
-        ]);
+        let mut plan = Plan {
+            actions: VecDeque::from([
+                make_action("Move", "DD"),
+                make_action("Open", "DD"),
+                make_action("Move", "CC"),
+                make_action("Move", "BB"),
+                make_action("Open", "BB"),
+                make_action("Move", "AA"),
+                make_action("Move", "II"),
+                make_action("Move", "JJ"),
+                make_action("Open", "JJ"),
+                make_action("Move", "II"),
+                make_action("Move", "AA"),
+                make_action("Move", "DD"),
+                make_action("Move", "EE"),
+                make_action("Move", "FF"),
+                make_action("Move", "GG"),
+                make_action("Move", "HH"),
+                make_action("Open", "HH"),
+                make_action("Move", "GG"),
+                make_action("Move", "FF"),
+                make_action("Move", "EE"),
+                make_action("Open", "EE"),
+                make_action("Move", "DD"),
+                make_action("Move", "CC"),
+                make_action("Open", "CC"),
+            ]),
+        score: 0 };
+        while plan.actions.len() < 30 {
+            plan.actions.push_back(Wait);
+        }
         assert_eq!(network.execute_plan(&plan), Ok(1651));
     }
 
     #[test]
     fn test_optimal_plan() {
         let network: Network = Network::from(SAMPLE.lines());
-        assert!(network.optimal_plan("AA").is_some());
+        let plan = network.optimal_plan("AA");
+        assert_eq!(network.execute_plan(&plan), Ok(plan.score));
+        assert_eq!(plan.score, 1651);
     }
+
 }
