@@ -1,17 +1,17 @@
-use std::fs;
 use std::collections::{HashMap, HashSet};
-use vecmath::{Vector3, vec3_add};
+use std::fs;
+use vecmath::{vec3_add, Vector3};
 
 type int = i8;
 type Key = u64;
 type Coord = Vector3<int>;
-const CARDINALS: [[int; 3]; 6]= [
+const CARDINALS: [[int; 3]; 6] = [
     [-1, 0, 0],
-    [ 1, 0, 0],
-    [ 0,-1, 0],
-    [ 0, 1, 0],
-    [ 0, 0,-1],
-    [ 0, 0, 1],
+    [1, 0, 0],
+    [0, -1, 0],
+    [0, 1, 0],
+    [0, 0, -1],
+    [0, 0, 1],
 ];
 #[derive(Debug, PartialEq, Clone)]
 struct Cube {
@@ -27,34 +27,40 @@ struct Cubes {
 }
 impl Cube {
     fn key(c: &Coord) -> Key {
-        ((c[0] as Key) << 16) + 
-        ((c[1] as Key) << 8) +
-        (c[2] as Key)
+        ((c[0] as Key) << 16) + ((c[1] as Key) << 8) + (c[2] as Key)
     }
 
     fn valid(c: &Coord) -> bool {
-        c[0] >= 0 && c[0] <= int::MAX &&
-        c[1] >= 0 && c[1] <= int::MAX &&
-        c[2] >= 0 && c[2] <= int::MAX
+        c[0] >= 0
+            && c[0] <= int::MAX
+            && c[1] >= 0
+            && c[1] <= int::MAX
+            && c[2] >= 0
+            && c[2] <= int::MAX
     }
 }
 
 impl From<&str> for Cube {
     fn from(input: &str) -> Self {
         let pos = Coord::from(
-            input.split(',')
-            .map(str::parse::<int>)
-            .map(Result::unwrap)
-            .collect::<Vec<int>>()
-            .try_into()
-            .unwrap());
+            input
+                .split(',')
+                .map(str::parse::<int>)
+                .map(Result::unwrap)
+                .collect::<Vec<int>>()
+                .try_into()
+                .unwrap(),
+        );
         Cube::new(pos)
     }
 }
 
 impl Cube {
     fn new(pos: Coord) -> Self {
-        Cube { pos, key: Self::key(&pos) }
+        Cube {
+            pos,
+            key: Self::key(&pos),
+        }
     }
 }
 
@@ -68,24 +74,21 @@ impl From<&str> for Cubes {
             lb = min(&lb, &cube.pos);
             ub = max(&ub, &cube.pos);
         }
-        Cubes { store, lb, ub, known_outside: HashSet::new() }
+        Cubes {
+            store,
+            lb,
+            ub,
+            known_outside: HashSet::new(),
+        }
     }
 }
 
-fn max (a: &Coord, b: &Coord) -> Coord {
-    [
-        a[0].max(b[0]),
-        a[1].max(b[1]),
-        a[2].max(b[2])
-    ]
+fn max(a: &Coord, b: &Coord) -> Coord {
+    [a[0].max(b[0]), a[1].max(b[1]), a[2].max(b[2])]
 }
 
-fn min (a: &Coord, b: &Coord) -> Coord {
-    [
-        a[0].min(b[0]),
-        a[1].min(b[1]),
-        a[2].min(b[2])
-    ]
+fn min(a: &Coord, b: &Coord) -> Coord {
+    [a[0].min(b[0]), a[1].min(b[1]), a[2].min(b[2])]
 }
 
 impl Cubes {
@@ -145,8 +148,12 @@ impl Cubes {
     }
 
     fn flood(&self, seed: &Cube) -> Option<Vec<Cube>> {
-        if self.contains(&seed.pos) { return None }
-        if self.trivially_outside(&seed.pos) { return None }
+        if self.contains(&seed.pos) {
+            return None;
+        }
+        if self.trivially_outside(&seed.pos) {
+            return None;
+        }
         let mut void = Vec::new();
         void.push(seed.clone());
         let mut frontier = Vec::new();
@@ -158,9 +165,9 @@ impl Cubes {
             for candidate in candidates.drain(..) {
                 for delta in CARDINALS {
                     let probe = Cube::new(vec3_add(seed.pos, delta));
-                    if !self.store.contains_key(&probe.key) && !void.contains(&probe) { 
+                    if !self.store.contains_key(&probe.key) && !void.contains(&probe) {
                         if self.trivially_outside(&probe.pos) {
-                            return None
+                            return None;
                         } else {
                             frontier.push(probe.clone());
                             void.push(probe);
@@ -169,16 +176,24 @@ impl Cubes {
                     }
                 }
             }
-            if !found { break; }
+            if !found {
+                break;
+            }
         }
         Some(void)
     }
 
     fn trivially_outside(&self, z: &Coord) -> bool {
         // trivially outside
-        if self.known_outside.contains(&Cube::key(&z)) { return true; }
-        if z[0] <= self.lb[0] || z[1] <= self.lb[1] || z[2] <= self.lb[2] { return true; }
-        if z[0] >= self.ub[0] || z[1] >= self.ub[1] || z[2] >= self.ub[2] { return true; }
+        if self.known_outside.contains(&Cube::key(&z)) {
+            return true;
+        }
+        if z[0] <= self.lb[0] || z[1] <= self.lb[1] || z[2] <= self.lb[2] {
+            return true;
+        }
+        if z[0] >= self.ub[0] || z[1] >= self.ub[1] || z[2] >= self.ub[2] {
+            return true;
+        }
         for dim in 0..3 {
             let clear = false;
             let mut delta = [0, 0, 0];
@@ -186,14 +201,18 @@ impl Cubes {
             let mut probe = vec3_add(*z, delta);
             let mut clear_down = true;
             while probe[dim] >= self.lb[dim] {
-                if self.contains(&probe) { clear_down = false; }
+                if self.contains(&probe) {
+                    clear_down = false;
+                }
                 probe = vec3_add(probe, delta);
             }
             delta[dim] = 1;
             let mut probe = vec3_add(*z, delta);
             let mut clear_up = true;
             while probe[dim] <= self.ub[dim] {
-                if self.contains(&probe) { clear_up = false; }
+                if self.contains(&probe) {
+                    clear_up = false;
+                }
                 probe = vec3_add(probe, delta);
             }
             if clear_up || clear_down {
@@ -202,7 +221,6 @@ impl Cubes {
         }
         false
     }
-
 }
 
 fn main() {
@@ -211,7 +229,10 @@ fn main() {
     println!("there are {} cubes", cubes.len());
     println!("there are {} expose sides", cubes.count_exposed());
     cubes.fill_holes();
-    println!("there are {} expose sides, ignoring internal pockets", cubes.count_exposed());
+    println!(
+        "there are {} expose sides, ignoring internal pockets",
+        cubes.count_exposed()
+    );
 }
 
 #[cfg(test)]
@@ -274,7 +295,10 @@ mod tests {
         assert!(cubes.flood(&Cube::new([1, 1, 1])).is_none());
         assert!(cubes.flood(&Cube::new([2, 4, 5])).is_none());
         assert!(cubes.flood(&Cube::new([2, 2, 5])).is_some());
-        assert_eq!(cubes.flood(&Cube::new([2, 2, 5])).unwrap(), [Cube::new([2, 2, 5])]);
+        assert_eq!(
+            cubes.flood(&Cube::new([2, 2, 5])).unwrap(),
+            [Cube::new([2, 2, 5])]
+        );
     }
 
     const BIG_VOID: &str = r#"1,1,1
@@ -314,5 +338,4 @@ mod tests {
         cubes.fill_holes();
         assert_eq!(cubes.count_exposed(), 58);
     }
-
 }
