@@ -2,10 +2,10 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use vecmath::{vec3_add, Vector3};
 
-type int = i8;
+type Int = i8;
 type Key = u64;
-type Coord = Vector3<int>;
-const CARDINALS: [[int; 3]; 6] = [
+type Coord = Vector3<Int>;
+const CARDINALS: [[Int; 3]; 6] = [
     [-1, 0, 0],
     [1, 0, 0],
     [0, -1, 0],
@@ -31,26 +31,19 @@ impl Cube {
     }
 
     fn valid(c: &Coord) -> bool {
-        c[0] >= 0
-            && c[0] <= int::MAX
-            && c[1] >= 0
-            && c[1] <= int::MAX
-            && c[2] >= 0
-            && c[2] <= int::MAX
+        c[0] >= 0 && c[1] >= 0 && c[2] >= 0
     }
 }
 
 impl From<&str> for Cube {
     fn from(input: &str) -> Self {
-        let pos = Coord::from(
-            input
-                .split(',')
-                .map(str::parse::<int>)
-                .map(Result::unwrap)
-                .collect::<Vec<int>>()
-                .try_into()
-                .unwrap(),
-        );
+        let pos = input
+            .split(',')
+            .map(str::parse::<Int>)
+            .map(Result::unwrap)
+            .collect::<Vec<Int>>()
+            .try_into()
+            .unwrap();
         Cube::new(pos)
     }
 }
@@ -69,7 +62,7 @@ impl From<&str> for Cubes {
         let mut store = HashMap::new();
         store.extend(input.lines().map(Cube::from).map(|c| (c.key, c)));
         let mut ub = [0, 0, 0];
-        let mut lb = [int::MAX, int::MAX, int::MAX];
+        let mut lb = [Int::MAX, Int::MAX, Int::MAX];
         for (_, cube) in store.iter() {
             lb = min(&lb, &cube.pos);
             ub = max(&ub, &cube.pos);
@@ -161,10 +154,10 @@ impl Cubes {
         loop {
             let mut found = false;
             let mut candidates = Vec::new();
-            candidates.extend(frontier.drain(..));
+            candidates.append(&mut frontier);
             for candidate in candidates.drain(..) {
                 for delta in CARDINALS {
-                    let probe = Cube::new(vec3_add(seed.pos, delta));
+                    let probe = Cube::new(vec3_add(candidate.pos, delta));
                     if !self.store.contains_key(&probe.key) && !void.contains(&probe) {
                         if self.trivially_outside(&probe.pos) {
                             return None;
@@ -185,7 +178,7 @@ impl Cubes {
 
     fn trivially_outside(&self, z: &Coord) -> bool {
         // trivially outside
-        if self.known_outside.contains(&Cube::key(&z)) {
+        if self.known_outside.contains(&Cube::key(z)) {
             return true;
         }
         if z[0] <= self.lb[0] || z[1] <= self.lb[1] || z[2] <= self.lb[2] {
@@ -195,7 +188,6 @@ impl Cubes {
             return true;
         }
         for dim in 0..3 {
-            let clear = false;
             let mut delta = [0, 0, 0];
             delta[dim] = -1;
             let mut probe = vec3_add(*z, delta);
