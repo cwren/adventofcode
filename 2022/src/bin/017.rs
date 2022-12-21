@@ -288,7 +288,6 @@ mod tests {
     #[test]
     fn test_drop() {
         let mut moves = Moves::from(SAMPLE);
-        // Bar, Cross, Ell, Stick, Square
         let mut board = Board::new();
         for _ in 0..10 {
             board.drop(&mut moves);
@@ -300,7 +299,6 @@ mod tests {
     #[test]
     fn test_drop_all_the_things() {
         let mut moves = Moves::from(SAMPLE);
-        // Bar, Cross, Ell, Stick, Square
         let mut board = Board::new();
         for _ in 0..2022 {
             board.drop(&mut moves);
