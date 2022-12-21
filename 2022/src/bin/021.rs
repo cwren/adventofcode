@@ -47,7 +47,7 @@ impl Monkey {
         troop.get(&Monkey::name_to_id(name))
     }
     fn evaluate(troop: &Troop) -> i64 {
-        let root = Monkey::find(&troop, "root").expect("there is no root!");
+        let root = Monkey::find(troop, "root").expect("there is no root!");
         root.eval(troop)
     }
     fn eval(&self, troop: &Troop) -> i64 {
@@ -61,7 +61,7 @@ impl Monkey {
         }
     }
     fn equality(troop: &Troop) -> Ordering {
-        let root = Monkey::find(&troop, "root").expect("there is no root!");
+        let root = Monkey::find(troop, "root").expect("there is no root!");
         if let Equal(a, b) = root.op {
             let a = troop.get(&a).unwrap().eval(troop);
             let b = troop.get(&b).unwrap().eval(troop);
