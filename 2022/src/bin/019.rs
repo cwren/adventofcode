@@ -97,12 +97,12 @@ impl Plan {
     }
 
     fn optimize(blueprint: Blueprint) -> Plan {
-        Plan::optimize_worker(blueprint, &State::new(), &Plan::new()).unwrap()
+        Plan::optimize_worker(blueprint, &State::new(), &Plan::new()).1
     }
 
     fn optimize_worker(blueprint: Blueprint, state: &State, plan: &Plan) -> (State, Plan) {
         if state.t == 24 {
-            return (*state, *plan)
+            return (*state, plan.clone())
         }
         if !plan.is_empty() {
             let mut state = state.clone();
@@ -113,19 +113,18 @@ impl Plan {
         let mut best_plan = None;
         let mut best_state = None;
         for option in [Geode, Obsidian, Clay, Ore] {
-            let mut plan = Plan::from(&vec![option]);
             let mut state = state.clone();
+            let mut plan = plan.clone();
+            plan.push_front(option);
             state.tick(&blueprint, &mut plan);
-            (state, plan) = Plan::optimize_worker(blueprint, &state, &plan) {
-                plan = new_plan;
-            }
+            (state, plan) = Plan::optimize_worker(blueprint, &state, &plan);
             if best_state.is_none() || state > best_state.unwrap() {
                 plan.push_front(option);
                 best_state = Some(state);
                 best_plan= Some(plan);
             }
         }
-        best_plan
+        (best_state.unwrap(), best_plan.unwrap())
     }
 }
 
