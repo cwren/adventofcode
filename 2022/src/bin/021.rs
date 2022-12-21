@@ -1,15 +1,15 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::cmp::Ordering;
-use std::fs;
-use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
+use std::fs;
 use std::hash::{Hash, Hasher};
-
 
 lazy_static! {
     static ref NUMBER_MOKEY: regex::Regex = Regex::new(r"^([a-z]+): (\d+)$").unwrap();
-    static ref OPERATOR_MOKEY: regex::Regex = Regex::new(r"^([a-z]+): ([a-z]+) (.) ([a-z]+)$").unwrap();
+    static ref OPERATOR_MOKEY: regex::Regex =
+        Regex::new(r"^([a-z]+): ([a-z]+) (.) ([a-z]+)$").unwrap();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -21,8 +21,7 @@ enum Operator {
     Div(u64, u64),
     Equal(u64, u64),
 }
-use Operator::{Yell, Add, Sub, Mul, Div, Equal};
-
+use Operator::{Add, Div, Equal, Mul, Sub, Yell};
 
 #[derive(Debug, Copy, Clone)]
 struct Monkey {
@@ -41,7 +40,7 @@ impl Monkey {
     fn new(name: &str, op: Operator) -> Self {
         let name = String::from(name);
         let id = Self::name_to_id(&name);
-        Monkey{ id, op}
+        Monkey { id, op }
     }
     fn find<'troop>(troop: &'troop Troop, name: &str) -> Option<&'troop Monkey> {
         troop.get(&Monkey::name_to_id(name))
@@ -57,7 +56,7 @@ impl Monkey {
             Sub(a, b) => troop.get(&a).unwrap().eval(troop) - troop.get(&b).unwrap().eval(troop),
             Mul(a, b) => troop.get(&a).unwrap().eval(troop) * troop.get(&b).unwrap().eval(troop),
             Div(a, b) => troop.get(&a).unwrap().eval(troop) / troop.get(&b).unwrap().eval(troop),
-            Equal(_,_) => panic!("only root should hold an equality operator"),
+            Equal(_, _) => panic!("only root should hold an equality operator"),
         }
     }
     fn equality(troop: &Troop) -> Ordering {
@@ -75,7 +74,7 @@ impl Monkey {
         human.op = Yell(value);
         troop.insert(human.id, human);
     }
-    
+
     fn fix_root(troop: &mut HashMap<u64, Monkey>) {
         let mut root = *Monkey::find(&*troop, "root").unwrap();
         troop.remove(&root.id);
@@ -97,12 +96,14 @@ impl Monkey {
         Monkey::fix_human(troop, lower_value);
         let lower_order = Monkey::equality(troop);
         println!("lower order is {:?}", lower_order);
-        
+
         let mut upper_value = 2;
         loop {
             println!("searching for upper: {upper_value}");
             Monkey::fix_human(troop, upper_value);
-            if lower_order != Monkey::equality(troop) { break; }
+            if lower_order != Monkey::equality(troop) {
+                break;
+            }
             upper_value *= 2;
         }
 
@@ -111,7 +112,9 @@ impl Monkey {
             println!("testing {probe}");
             Monkey::fix_human(troop, probe);
             let result = Monkey::equality(troop);
-            if result == Ordering::Equal { return probe; }
+            if result == Ordering::Equal {
+                return probe;
+            }
             if result == lower_order {
                 lower_value = probe;
             } else {
@@ -127,11 +130,15 @@ impl From<&str> for Monkey {
             Some(cap) => {
                 // number monkey
                 let name = cap.get(1).expect("missing name").as_str();
-                let operand = cap.get(2).expect("missing number").as_str().parse::<i64>().expect("not a number");
+                let operand = cap
+                    .get(2)
+                    .expect("missing number")
+                    .as_str()
+                    .parse::<i64>()
+                    .expect("not a number");
                 Monkey::new(name, Yell(operand))
             }
-            None => 
-            match OPERATOR_MOKEY.captures(s) {
+            None => match OPERATOR_MOKEY.captures(s) {
                 // operator monkey
                 Some(cap) => {
                     let name = cap.get(1).expect("missing name").as_str();
@@ -143,12 +150,12 @@ impl From<&str> for Monkey {
                         "-" => Sub(a, b),
                         "*" => Mul(a, b),
                         "/" => Div(a, b),
-                        _ => panic!("unknown operaotr")
+                        _ => panic!("unknown operaotr"),
                     };
                     Monkey::new(name, op)
                 }
-                None => panic!("unparsable Monkey {s}"),      
-            }      
+                None => panic!("unparsable Monkey {s}"),
+            },
         }
     }
 }
@@ -182,22 +189,37 @@ hmdt: 32"#;
 
     #[test]
     fn test_parse_troop() {
-        let troop: Troop = SAMPLE.lines().map(Monkey::from).map(|m| (m.id, m)).collect();
+        let troop: Troop = SAMPLE
+            .lines()
+            .map(Monkey::from)
+            .map(|m| (m.id, m))
+            .collect();
         assert_eq!(troop.len(), 15);
         assert!(Monkey::find(&troop, "root").is_some());
-        assert_eq!(Monkey::find(&troop, "root").unwrap().op, Add(Monkey::name_to_id("pppw"), Monkey::name_to_id("sjmn")));
+        assert_eq!(
+            Monkey::find(&troop, "root").unwrap().op,
+            Add(Monkey::name_to_id("pppw"), Monkey::name_to_id("sjmn"))
+        );
         assert_eq!(Monkey::find(&troop, "sllz").unwrap().op, Yell(4));
     }
 
     #[test]
     fn test_execute() {
-        let troop: Troop = SAMPLE.lines().map(Monkey::from).map(|m| (m.id, m)).collect();
+        let troop: Troop = SAMPLE
+            .lines()
+            .map(Monkey::from)
+            .map(|m| (m.id, m))
+            .collect();
         assert_eq!(Monkey::evaluate(&troop), 152);
     }
 
     #[test]
     fn test_equality() {
-        let mut troop: Troop = SAMPLE.lines().map(Monkey::from).map(|m| (m.id, m)).collect();
+        let mut troop: Troop = SAMPLE
+            .lines()
+            .map(Monkey::from)
+            .map(|m| (m.id, m))
+            .collect();
         Monkey::fix_root(&mut troop);
         Monkey::fix_human(&mut troop, 301);
         assert_eq!(Monkey::equality(&troop), Ordering::Equal);
@@ -207,7 +229,11 @@ hmdt: 32"#;
 
     #[test]
     fn find_equality() {
-        let mut troop: Troop = SAMPLE.lines().map(Monkey::from).map(|m| (m.id, m)).collect();
+        let mut troop: Troop = SAMPLE
+            .lines()
+            .map(Monkey::from)
+            .map(|m| (m.id, m))
+            .collect();
         assert!([301, 302].contains(&Monkey::find_equality(&mut troop)));
     }
 }
