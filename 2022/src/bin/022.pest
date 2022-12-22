@@ -1,0 +1,4 @@
+number = { ASCII_DIGIT+ }
+left = { "L" }
+right = { "R" }
+list = { (left | right | number)* }
