@@ -2,7 +2,7 @@ use std::fs;
 const KEY: i128 = 811_589_153;
 
 #[derive(Debug)]
-struct Node { 
+struct Node {
     id: usize,
     v: i128,
 }
@@ -34,8 +34,12 @@ fn find_value(ring: &[Node], value: i128) -> Option<usize> {
 
 fn wrap(i: i128, n: i128) -> i128 {
     let mut i = i % n;
-    while i < 0 { i += n; }
-    while i > n { i -= n; }
+    while i < 0 {
+        i += n;
+    }
+    while i > n {
+        i -= n;
+    }
     i
 }
 
@@ -46,8 +50,12 @@ fn move_node(ring: &mut Vec<Node>, id: usize) {
     let from = from as i128;
     let mut to = from + node.v;
     to = wrap(to, n - 1);
-    if node.v < 0 && to == 0 { to = n - 1 }
-    if node.v > 0 && to == n { to = 0 }
+    if node.v < 0 && to == 0 {
+        to = n - 1
+    }
+    if node.v > 0 && to == n {
+        to = 0
+    }
     ring.insert(to as usize, node);
 }
 
@@ -73,7 +81,10 @@ fn decrypt(ring: &mut [Node], key: i128) {
 
 fn main() {
     let input: &str = &fs::read_to_string("input/020.txt").expect("file read error");
-    let numbers = input.lines().map(|s| s.parse::<i128>().expect("not a number")).collect::<Vec<i128>>();
+    let numbers = input
+        .lines()
+        .map(|s| s.parse::<i128>().expect("not a number"))
+        .collect::<Vec<i128>>();
     let mut ring = string_nodes(numbers.clone());
     println!("there are {} nodes", ring.len());
     move_all(&mut ring);
@@ -84,7 +95,7 @@ fn main() {
     for _ in 0..10 {
         move_all(&mut ring);
     }
-    println!("actual grove coordiante is {}", score(&ring));   
+    println!("actual grove coordiante is {}", score(&ring));
 }
 
 #[cfg(test)]
@@ -100,7 +111,10 @@ mod tests {
 
     #[test]
     fn test_parse_input() {
-        let ring = SAMPLE.lines().map(|s| s.parse::<i128>().expect("not a number")).collect::<Vec<i128>>();
+        let ring = SAMPLE
+            .lines()
+            .map(|s| s.parse::<i128>().expect("not a number"))
+            .collect::<Vec<i128>>();
         let ring = string_nodes(ring);
         assert_eq!(ring.len(), 7);
         assert_eq!(ring.first().unwrap().id, 0);
@@ -108,20 +122,26 @@ mod tests {
         assert_eq!(ring.last().unwrap().id, 6);
         assert_eq!(ring.last().unwrap().v, 4);
     }
-    
+
     #[test]
     fn test_find_node() {
-        let ring = SAMPLE.lines().map(|s| s.parse::<i128>().expect("not a number")).collect::<Vec<i128>>();
+        let ring = SAMPLE
+            .lines()
+            .map(|s| s.parse::<i128>().expect("not a number"))
+            .collect::<Vec<i128>>();
         let ring = string_nodes(ring);
         assert_eq!(find_node(&ring, 0), Some(0));
         assert_eq!(find_node(&ring, 1), Some(1));
         assert_eq!(find_node(&ring, 6), Some(6));
         assert_eq!(find_node(&ring, 7), None);
     }
-    
+
     #[test]
     fn test_move_node() {
-        let ring = SAMPLE.lines().map(|s| s.parse::<i128>().expect("not a number")).collect::<Vec<i128>>();
+        let ring = SAMPLE
+            .lines()
+            .map(|s| s.parse::<i128>().expect("not a number"))
+            .collect::<Vec<i128>>();
         let mut ring = string_nodes(ring);
         // 0, 1, 2, 3, 4, 5, 6
         // 1, 2,-3, 3,-2, 0, 4
@@ -187,12 +207,14 @@ mod tests {
         assert_eq!(find_node(&ring, 1), Some(2));
         assert_eq!(find_node(&ring, 2), Some(1));
         assert_eq!(find_node(&ring, 3), Some(3));
-
     }
-    
+
     #[test]
     fn test_move_all() {
-        let ring = SAMPLE.lines().map(|s| s.parse::<i128>().expect("not a number")).collect::<Vec<i128>>();
+        let ring = SAMPLE
+            .lines()
+            .map(|s| s.parse::<i128>().expect("not a number"))
+            .collect::<Vec<i128>>();
         let mut ring = string_nodes(ring);
         // 0, 1, 2, 3, 4, 5, 6
         // 1, 2,-3, 3,-2, 0, 4
@@ -208,19 +230,25 @@ mod tests {
     }
     #[test]
     fn test_score() {
-        let ring = SAMPLE.lines().map(|s| s.parse::<i128>().expect("not a number")).collect::<Vec<i128>>();
+        let ring = SAMPLE
+            .lines()
+            .map(|s| s.parse::<i128>().expect("not a number"))
+            .collect::<Vec<i128>>();
         let mut ring = string_nodes(ring);
         move_all(&mut ring);
-        assert_eq!(score(&ring), 3);   
+        assert_eq!(score(&ring), 3);
     }
     #[test]
     fn test_decrypted_score() {
-        let ring = SAMPLE.lines().map(|s| s.parse::<i128>().expect("not a number")).collect::<Vec<i128>>();
+        let ring = SAMPLE
+            .lines()
+            .map(|s| s.parse::<i128>().expect("not a number"))
+            .collect::<Vec<i128>>();
         let mut ring = string_nodes(ring);
         decrypt(&mut ring, KEY);
         for _ in 0..10 {
             move_all(&mut ring);
         }
-        assert_eq!(score(&ring), 1623178306);   
+        assert_eq!(score(&ring), 1623178306);
     }
 }
