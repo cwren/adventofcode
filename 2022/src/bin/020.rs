@@ -15,7 +15,7 @@ fn string_nodes(ring: Vec<i128>) -> Vec<Node> {
     nodes
 }
 
-fn find_node(ring: &Vec<Node>, id: usize) -> Option<usize> {
+fn find_node(ring: &[Node], id: usize) -> Option<usize> {
     for (p, n) in ring.iter().enumerate() {
         if n.id == id {
             return Some(p);
@@ -23,7 +23,7 @@ fn find_node(ring: &Vec<Node>, id: usize) -> Option<usize> {
     }
     None
 }
-fn find_value(ring: &Vec<Node>, value: i128) -> Option<usize> {
+fn find_value(ring: &[Node], value: i128) -> Option<usize> {
     for (p, n) in ring.iter().enumerate() {
         if n.v == value {
             return Some(p);
@@ -40,7 +40,7 @@ fn wrap(i: i128, n: i128) -> i128 {
 }
 
 fn move_node(ring: &mut Vec<Node>, id: usize) {
-    let from = find_node(&ring, id).expect("unknwon node!");
+    let from = find_node(ring, id).expect("unknwon node!");
     let n = ring.len() as i128;
     let node = ring.remove(from);
     let from = from as i128;
@@ -65,9 +65,9 @@ fn score(ring: &Vec<Node>) -> i128 {
     ring.get(a).unwrap().v + ring.get(b).unwrap().v + ring.get(c).unwrap().v
 }
 
-fn decrypt(ring: &mut Vec<Node>, key: i128) {
+fn decrypt(ring: &mut [Node], key: i128) {
     for node in ring.iter_mut() {
-        node.v *= KEY;
+        node.v *= key;
     }
 }
 
