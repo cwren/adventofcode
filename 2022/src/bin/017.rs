@@ -95,13 +95,17 @@ struct Board {
 
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut top = self.top;
         let sprite = Sprite::get(&self.piece);
         let mut sprite_blocks = HashSet::new();
         for block in sprite.blocks.iter() {
-            sprite_blocks.insert(vec2_add(self.pos, *block));
+            let coord = vec2_add(self.pos, *block);
+            sprite_blocks.insert(coord);
+            top = top.max(coord[1]);
         }
-        for i in 0..self.top {
-            let y = self.top - i - 1;
+        top = top + 1;
+        for i in 0..top {
+            let y = top - i - 1;
             let mut row = String::with_capacity(self.w as usize + 2);
             row.push('|');
             for x in 0..self.w {
