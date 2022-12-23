@@ -95,15 +95,24 @@ struct Board {
 
 impl Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sprite = Sprite::get(&self.piece);
+        let mut sprite_blocks = HashSet::new();
+        for block in sprite.blocks.iter() {
+            sprite_blocks.insert(vec2_add(self.pos, *block));
+        }
         for i in 0..self.top {
             let y = self.top - i - 1;
             let mut row = String::with_capacity(self.w as usize + 2);
             row.push('|');
             for x in 0..self.w {
-                row.push(match self.occupied(&[x, y]) {
-                    true => '#',
-                    false => '.',
-                });
+                if sprite_blocks.contains(&[x, y]) {
+                    row.push('@');
+                } else {
+                    row.push(match self.occupied(&[x, y]) {
+                        true => '#',
+                        false => '.',
+                    });
+                }
             }
             row.push('|');
             write!(f, "{row}\n")?;
@@ -278,6 +287,7 @@ mod tests {
             board.execute(moves.next());
         }
         while board.piece == Square {
+        println!("{board}");
             board.execute(moves.next());
         }
         println!("{board}");
