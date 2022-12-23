@@ -1,17 +1,9 @@
-use std::f32::consts::E;
+#![feature(is_some_and)]
 use std::{fs, fmt};
 use std::collections::{HashMap, HashSet, VecDeque};
 use vecmath::{vec2_add, vec2_sub, Vector2};
 
 type Coord = Vector2<i32>;
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum Cell {
-    Void,
-    Open,
-    Wall
-}
-use Cell::{Void, Open, Wall};
 
 struct Map {
     m: HashSet<Coord>,
@@ -30,9 +22,9 @@ impl fmt::Debug for Map {
                     true => write!(f, "#"),
                 }?;
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
-        write!(f, "\n")
+        writeln!(f, "{:?}",  self.bound())
     }
 }
 
@@ -66,7 +58,7 @@ impl Map {
         options.rotate_left((self.t % 4) as usize);
         options
     }
-
+    
     fn tick(&mut self) -> bool {
         let mut destinations = HashSet::new();
         let mut moves = HashMap::new();
@@ -107,11 +99,11 @@ impl Map {
         let mut next = HashSet::new();
         for monkey in self.m.iter() {
             let destination = moves.get(monkey);
-            if destination.is_none() || blocked.contains(destination.unwrap()) {
-                next.insert(*monkey);
-            } else {
+            if destination.is_some_and(|d| !blocked.contains(d)) {
                 next.insert(*destination.unwrap());
                 someone_moved = true;
+            } else {
+                next.insert(*monkey);
             }
         }
 
@@ -150,10 +142,10 @@ fn main() {
     for _ in 0..10 {
         map.tick();
     }
-    println!("{:?}", map);
+    println!("{map:?}");
     println!("there are {} tiles of open ground after 10 ticks", map.empty_ground());
     while map.tick() {}
-    println!("{:?}", map);
+    println!("{map:?}");
     println!("it took {} ticks before all the elves were happy", map.t);
 }
 
@@ -198,11 +190,11 @@ mod tests {
     #[test]
     fn test_big_tick() {
         let mut map = Map::from(SAMPLE);
-        println!("{:?}", map);
+        println!("{map:?}");
         assert_eq!(map.t, 0);
         assert_eq!(map.bound(), [7, 7]);
         map.tick();
-        println!("{:?}", map);
+        println!("{map:?}");
         assert_eq!(map.t, 1);
         assert_eq!(map.bound(), [9, 9]);
     }
@@ -214,7 +206,7 @@ mod tests {
             map.tick();
         }
         assert_eq!(map.t, 10);
-        println!("{:?}", map);
+        println!("{map:?}");
         assert_eq!(map.empty_ground(),110);
     }
 
@@ -224,9 +216,9 @@ mod tests {
         for _ in 0..10 {
             map.tick();
         }
-        println!("{:?}", map);
+        println!("{map:?}");
         while map.tick() {}
-        println!("{:?}", map);
+        println!("{map:?}");
         assert_eq!(map.t, 20);
     }
 }
