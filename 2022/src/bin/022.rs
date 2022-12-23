@@ -1,4 +1,6 @@
+use lazy_static::lazy_static;
 use std::{fs, str::Lines, fmt};
+use std::collections::HashMap;
 use vecmath::{vec2_add, vec2_neg, Vector2};
 use pest::{Parser, iterators::Pair};
 #[macro_use]
@@ -72,7 +74,7 @@ impl Map {
         panic!("couldn't find an open spot on the top row!");
     }
 
-    fn search(&self, x: &Coord, dx: &Coord) -> Coord {
+    fn warp(&self, x: &Coord, dx: &Coord, wormholes: &Option<Edgemap>) -> Coord {
         let mut x1 = *x;
         loop {
             let x2 = vec2_add(x1, *dx);
@@ -131,7 +133,7 @@ fn parse_all(input: &str) -> (Map, Instructions) {
     (Map::read(&mut lines), parse_instructions(lines.next().unwrap()))
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 enum Facing { 
     North,
     South,
@@ -161,21 +163,21 @@ impl State {
         facing_score + column_score + row_score
 
     }
-    fn go_walkies(&mut self, m: &Map, instructions: &Instructions) {
+    fn go_walkies(&mut self, m: &Map, instructions: &Instructions, wormholes: &Option<Edgemap>) {
         for i in instructions.iter() {
-            self.follow(m, i);
+            self.follow(m, i, wormholes);
         }
     }
 
-    fn follow(&mut self, map: &Map, i: &Instruction) {
+    fn follow(&mut self, map: &Map, i: &Instruction, wormholes: &Option<Edgemap>) {
         match i {
             Right => self.turn_right(),
             Left =>  self.turn_left(),
-            Move(n) => self.walk_forward(map, *n),
+            Move(n) => self.walk_forward(map, *n, wormholes),
         }
     }
 
-    fn walk_forward(&mut self, map: &Map, n: i32) {
+    fn walk_forward(&mut self, map: &Map, n: i32, wormholes: &Option<Edgemap>) {
         let dx = match self.f {
             North => [0, -1],
             East => [1, 0],
@@ -188,7 +190,7 @@ impl State {
                 Open => self.x = x1,
                 Wall => break,
                 Void => {
-                    let x1 = map.search(&self.x, &vec2_neg(dx));
+                    let x1 = map.warp(&self.x, &vec2_neg(dx), wormholes);
                     if map.get(&x1) == Wall {
                         break;
                     }
@@ -217,11 +219,20 @@ impl State {
     }
 }
 
+
+type Warp = (i32, i32, Facing);
+
+#[derive(Clone)]
+struct Edgemap {
+    n: i32,
+    j: HashMap<Warp, Warp>,
+}
+
 fn main() {
     let input: &str = &fs::read_to_string("input/022.txt").expect("file read error");
     let (map, instructions) = parse_all(input);
     let mut state = map.find_start();
-    state.go_walkies(&map, &instructions);
+    state.go_walkies(&map, &instructions, &None);
     println!("the walk score is {}", state.score());
 }
 #[test]
@@ -247,6 +258,28 @@ mod tests {
 
 10R5L5R10L4R5L5"#;
 
+    lazy_static! {
+        static ref sample_edgemap: Edgemap = Edgemap {
+            n: 4,
+            j: vec![
+                ((2, 0, West),  (1, 1, South)),
+                ((2, 0, North), (0, 1, South)),
+                ((2, 0, East),  (3, 2, West)),
+                ((0, 1, North), (2, 0, South)),
+                ((0, 1, West),  (3, 2, North)),
+                ((0, 1, South), (2, 2, North)),
+                ((1, 1, North), (2, 0, West)),
+                ((1, 1, South), (2, 2, East)),
+                ((2, 1, East),  (3, 2, South)),
+                ((2, 3, West),  (1, 1, North)),
+                ((2, 3, South), (0, 1, North)),
+                ((3, 2, South), (0, 1, East)),
+                ((3, 2, East),  (2, 0, West)),
+                ((3, 2, North), (2, 1, West)),
+            ].iter().cloned().collect(),
+        };
+    }
+    
     #[test]
     fn test_parse_map() {
         let mut lines = SAMPLE.lines();
@@ -282,7 +315,7 @@ mod tests {
     fn test_walkies() {
         let (map, instructions) = parse_all(SAMPLE);
         let mut state = map.find_start();
-        state.go_walkies(&map, &instructions);
+        state.go_walkies(&map, &instructions, &None);
         assert_eq!(state, State { x: [7, 5], f: East});
     }
     #[test]
