@@ -57,7 +57,7 @@ impl Sprite {
         match piece {
             Bar => Sprite { w: 4, blocks: vec![[0,0], [1,0], [2,0], [3,0]] },
             Cross => Sprite { w: 3, blocks: vec![[0,1], [1,0], [1,1], [1,2], [2,1]] },
-            Ell => Sprite { w: 4, blocks: vec![[0,0], [1,0], [2,0], [2,1], [2,2]] },
+            Ell => Sprite { w: 3, blocks: vec![[0,0], [1,0], [2,0], [2,1], [2,2]] },
             Stick => Sprite { w: 1, blocks: vec![[0,0], [0,1], [0,2], [0,3]] },
             Square => Sprite { w: 2, blocks: vec![[0,0], [0,1], [1,0], [1,1]] },
         }
@@ -188,7 +188,7 @@ fn main() {
     for _ in 0..2022 {
         board.drop(&mut moves);
     }
-    println!("top of structure after 2022 blocks is {}", board.top - 1);
+    println!("top of structure after 2022 blocks is {}", board.top);
 }
 
 #[cfg(test)]
@@ -307,7 +307,7 @@ mod tests {
             board.drop(&mut moves);
         }
         println!("{board}");
-        assert_eq!(board.top - 1, 16);
+        assert_eq!(board.top, 17);
     }
 
     #[test]
@@ -318,6 +318,6 @@ mod tests {
             board.drop(&mut moves);
         }
         println!("{board}");
-        assert_eq!(board.top - 1, 3068);
+        assert_eq!(board.top, 3068);
     }
 }
