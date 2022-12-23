@@ -1,6 +1,6 @@
 #![feature(is_some_and)]
-use std::{fs, fmt};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::{fmt, fs};
 use vecmath::{vec2_add, vec2_sub, Vector2};
 
 type Coord = Vector2<i32>;
@@ -24,7 +24,7 @@ impl fmt::Debug for Map {
             }
             writeln!(f)?;
         }
-        writeln!(f, "{:?}",  self.bound())
+        writeln!(f, "{:?}", self.bound())
     }
 }
 
@@ -35,20 +35,31 @@ impl From<&str> for Map {
             for (i, c) in line.chars().enumerate() {
                 match c {
                     '.' => (),
-                    '#' => { m.insert([i as i32, j as i32]); }
+                    '#' => {
+                        m.insert([i as i32, j as i32]);
+                    }
                     _ => panic!("unexpected map element"),
                 };
             }
         }
         let t = 0;
-        Map { m , t }
+        Map { m, t }
     }
 }
 
-const EIGHT: [[i32; 2]; 8] = [[1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1], [0, 1]];
+const EIGHT: [[i32; 2]; 8] = [
+    [1, 1],
+    [1, 0],
+    [1, -1],
+    [0, -1],
+    [-1, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, 1],
+];
 
 impl Map {
-    fn options(&self) -> VecDeque<(Coord, Coord, Coord)>{
+    fn options(&self) -> VecDeque<(Coord, Coord, Coord)> {
         let mut options = VecDeque::from(vec![
             ([0, -1], [-1, -1], [1, -1]),
             ([0, 1], [-1, 1], [1, 1]),
@@ -58,14 +69,14 @@ impl Map {
         options.rotate_left((self.t % 4) as usize);
         options
     }
-    
+
     fn tick(&mut self) -> bool {
         let mut destinations = HashSet::new();
         let mut moves = HashMap::new();
         let mut blocked = HashSet::new();
         let options = self.options();
 
-        //look 
+        //look
         'monkey: for monkey in self.m.iter() {
             let mut happy = true;
             for direction in EIGHT {
@@ -76,13 +87,14 @@ impl Map {
                 }
             }
             if happy {
-                continue 'monkey // don't move
+                continue 'monkey; // don't move
             }
             for option in options.iter() {
                 let destination = vec2_add(*monkey, option.0);
-                if !self.m.contains(&destination) &&
-                   !self.m.contains(&vec2_add(*monkey, option.1)) &&
-                   !self.m.contains(&vec2_add(*monkey, option.2)) {
+                if !self.m.contains(&destination)
+                    && !self.m.contains(&vec2_add(*monkey, option.1))
+                    && !self.m.contains(&vec2_add(*monkey, option.2))
+                {
                     if destinations.contains(&destination) {
                         blocked.insert(destination);
                     } else {
@@ -122,9 +134,9 @@ impl Map {
             ur[0] = ur[0].max(monkey[0]);
             ur[1] = ur[1].max(monkey[1]);
         }
-        (ll, vec2_add(ur,[1, 1]))
+        (ll, vec2_add(ur, [1, 1]))
     }
-    
+
     fn bound(&self) -> Coord {
         let (ll, ur) = self.rect();
         vec2_sub(ur, ll)
@@ -143,7 +155,10 @@ fn main() {
         map.tick();
     }
     println!("{map:?}");
-    println!("there are {} tiles of open ground after 10 ticks", map.empty_ground());
+    println!(
+        "there are {} tiles of open ground after 10 ticks",
+        map.empty_ground()
+    );
     while map.tick() {}
     println!("{map:?}");
     println!("it took {} ticks before all the elves were happy", map.t);
@@ -207,7 +222,7 @@ mod tests {
         }
         assert_eq!(map.t, 10);
         println!("{map:?}");
-        assert_eq!(map.empty_ground(),110);
+        assert_eq!(map.empty_ground(), 110);
     }
 
     #[test]
