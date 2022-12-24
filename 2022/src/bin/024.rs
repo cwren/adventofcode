@@ -207,31 +207,45 @@ impl From<&str> for Map {
     }
 }
 
-fn shortest_path_through_spacetime(map: &mut Map) -> usize {
+fn shortest_path_through_spacetime(map: &mut Map, goals: &[SCoord]) -> usize {
     // https://en.wikipedia.org/wiki/A*_search_algorithm
     let longest = map.longest();
     let mut open = DoublePriorityQueue::new();
     let current = [map.start[0], map.start[1], 0];
+    let mut current_goal = 0;
+    if current_goal < goals.len() {
+        map.end = goals[current_goal];
+    }
     open.push(current, map.h(current));
 
     let mut g_score = HashMap::new();
     g_score.insert(current, 0usize);
 
     let mut from = HashMap::new();
-
     while !open.is_empty() {
         let (current, score) = open.pop_min().expect("while says it's not empty");
         if [current[0], current[1]] == map.end {
-            // unwind
-            let mut path = Vec::new();
-            let mut p = current;
-            while let Some(q) = from.get(&p) {
-                path.push(*q);
-                p = *q;
+            current_goal += 1;
+            if current_goal >= goals.len() {
+                // unwind
+                let mut path = Vec::new();
+                let mut p = current;
+                while let Some(q) = from.get(&p) {
+                    path.push(*q);
+                    p = *q;
+                }
+                path.reverse();
+                println!("best path: {:?}", path);
+                return path.len();
+            } else {
+                // the pricess is in another castle
+                map.start = map.end;
+                map.end = goals[current_goal];
+
+                g_score = HashMap::new();
+                g_score.insert(current, 0usize);
+                open = DoublePriorityQueue::new();
             }
-            path.reverse();
-            println!("best path: {:?}", path);
-            return path.len();
         }
         for offset in [[1, 0, 1], [0, 1, 1], [0, -1, 1], [-1, 0, 1], [0, 0, 1]] {
             if let Some(neighbor) = map.can_step(current, offset) {
@@ -256,7 +270,13 @@ fn main() {
     println!("there are {:?} blizzards", map.blizzards.len());
     println!(
         "shortest path is: {}",
-        shortest_path_through_spacetime(&mut map)
+        shortest_path_through_spacetime(&mut map, &[])
+    );
+    let mut map = Map::from(input);
+    let goals = [map.end, map.start, map.end];
+    println!(
+        "there and back again: {}",
+        shortest_path_through_spacetime(&mut map, &goals)
     );
 }
 
@@ -331,8 +351,14 @@ mod tests {
         assert!(state.occupied.contains(&[1, 1]));
     }
     #[test]
-    fn test_poath_finder() {
+    fn test_path_finder() {
         let mut map = Map::from(SAMPLE);
-        assert_eq!(shortest_path_through_spacetime(&mut map), 18);
+        assert_eq!(shortest_path_through_spacetime(&mut map, &[]), 18);
+    }
+    #[test]
+    fn test_multipath() {
+        let mut map = Map::from(SAMPLE);
+        let goals = [map.end, map.start, map.end];
+        assert_eq!(shortest_path_through_spacetime(&mut map, &goals), 54);
     }
 }
