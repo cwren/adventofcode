@@ -4,11 +4,10 @@ use std::{
     fs,
     hash::{Hash, Hasher},
 };
-use vecmath::{vec2_add, vec2_neg, vec3_add, Vector2, Vector3};
+use vecmath::{vec3_add, Vector2};
 
 type Int = i32;
 type SCoord = Vector2<Int>;
-type STCoord = Vector3<Int>;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 enum Direction {
@@ -151,7 +150,7 @@ impl From<&str> for Map {
         for line in lines {
             let j = valley[1];
             let bytes = line.to_string().into_bytes();
-            if bytes.iter().filter(|b| **b == '#' as u8).count() > 2 {
+            if bytes.iter().filter(|b| **b == b'#').count() > 2 {
                 // south wall
                 end[1] = valley[1];
                 end[0] = line
@@ -159,24 +158,24 @@ impl From<&str> for Map {
                     .expect("there should be a door in the south wall")
                     as i32;
             } else {
-                for i in 1..(valley[0] as usize - 1) {
-                    match bytes[i] as char {
+                for (i, b) in bytes.iter().enumerate().take(valley[0] as usize - 1).skip(1) {
+                    match *b as char {
                         '.' => (),
                         '#' => panic!("found a wall inside the valley"),
                         '^' => blizzards.push(Blizzard {
-                            pos: [i as i32, j as i32],
+                            pos: [i as i32, j],
                             dir: North,
                         }),
                         '>' => blizzards.push(Blizzard {
-                            pos: [i as i32, j as i32],
+                            pos: [i as i32, j],
                             dir: East,
                         }),
                         'v' => blizzards.push(Blizzard {
-                            pos: [i as i32, j as i32],
+                            pos: [i as i32, j],
                             dir: South,
                         }),
                         '<' => blizzards.push(Blizzard {
-                            pos: [i as i32, j as i32],
+                            pos: [i as i32, j],
                             dir: West,
                         }),
                         _ => panic!("illegal map character"),
@@ -223,7 +222,7 @@ fn shortest_path_through_spacetime(map: &mut Map, goals: &[SCoord]) -> usize {
 
     let mut from = HashMap::new();
     while !open.is_empty() {
-        let (current, score) = open.pop_min().expect("while says it's not empty");
+        let (current, _) = open.pop_min().expect("while says it's not empty");
         if [current[0], current[1]] == map.end {
             current_goal += 1;
             if current_goal >= goals.len() {
@@ -235,7 +234,7 @@ fn shortest_path_through_spacetime(map: &mut Map, goals: &[SCoord]) -> usize {
                     p = *q;
                 }
                 path.reverse();
-                println!("best path: {:?}", path);
+                println!("best path: {path:?}");
                 return path.len();
             } else {
                 // the pricess is in another castle
@@ -343,10 +342,9 @@ mod tests {
     #[test]
     fn test_at_t_5() {
         let mut map = Map::from(SAMPLE);
-        let state = map.at_time(1);
-        let state = map.at_time(2);
-        let state = map.at_time(3);
-        let state = map.at_time(4);
+        for t in 0..5 {
+            map.at_time(t);
+        }
         let state = map.at_time(5);
         assert!(state.occupied.contains(&[1, 1]));
     }
