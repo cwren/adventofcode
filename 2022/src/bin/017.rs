@@ -3,7 +3,7 @@ use std::fs;
 use std::collections::{HashSet, VecDeque};
 use vecmath::{vec2_add, Vector2};
 
-type Int = i32;
+type Int = i64;
 type Coord = Vector2<Int>;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -177,6 +177,17 @@ impl Board {
         while self.piece == start {
             self.execute(moves.next());
         }
+        self.clean();
+    }
+
+    fn clean(&mut self) {
+        let mut defragged = HashSet::new();
+        for cell in self.occupied.drain() {
+            if cell[1] > self.top - 100 {
+                defragged.insert(cell);
+            }
+        }
+        self.occupied = defragged;
     }
 }
 
@@ -189,6 +200,13 @@ fn main() {
         board.drop(&mut moves);
     }
     println!("top of structure after 2022 blocks is {}", board.top);
+
+    let mut moves = Moves::from(input);
+    let mut board = Board::new();
+    for _ in 0..1_000_000 {
+        board.drop(&mut moves);
+    }
+    println!("top of structure after 1M blocks is {}", board.top);
 }
 
 #[cfg(test)]
@@ -319,5 +337,30 @@ mod tests {
         }
         println!("{board}");
         assert_eq!(board.top, 3068);
+    }
+
+    #[test]
+    fn test_periodicity() {
+        let mut moves = Moves::from(SAMPLE);
+        let mut board = Board::new();
+        for _ in 0..(5i64 * moves.q.len() as i64) {
+            board.drop(&mut moves);
+        }
+        println!("{board}");
+        for _ in 0..(5i64 * moves.q.len() as i64) {
+            board.drop(&mut moves);
+        }
+        println!("{board}");
+        assert!(false);
+    }
+
+    #[test]
+    fn test_terra_drop() {
+        let mut moves = Moves::from(SAMPLE);
+        let mut board = Board::new();
+        for _ in 0..(1_000_000_000_000i64 % (5i64 * moves.q.len() as i64)) {
+            board.drop(&mut moves);
+        }
+        assert_eq!(board.top, 1_514_285_714_288i64);
     }
 }
