@@ -1,19 +1,23 @@
-use std::{fs, collections::{HashMap, HashSet}, hash::{Hash, Hasher}};
 use priority_queue::DoublePriorityQueue;
-use vecmath::{vec2_add, vec2_neg, Vector2, Vector3, vec3_add};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    hash::{Hash, Hasher},
+};
+use vecmath::{vec2_add, vec2_neg, vec3_add, Vector2, Vector3};
 
 type Int = i32;
 type SCoord = Vector2<Int>;
 type STCoord = Vector3<Int>;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-enum Direction { 
+enum Direction {
     North,
     South,
     East,
     West,
 }
-use Direction::{North, South, East, West};
+use Direction::{East, North, South, West};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 struct Blizzard {
@@ -23,10 +27,18 @@ struct Blizzard {
 impl Blizzard {
     fn wrap(&mut self, valley: [i32; 2]) {
         // #......# 1..valley-1
-        if self.pos[0] < 1 { self.pos[0] = valley[0] - 2; }
-        if self.pos[0] >= valley[0] - 1 { self.pos[0] = 1; }
-        if self.pos[1] < 1 { self.pos[1] = valley[1] - 2; }
-        if self.pos[1] >= valley[1] - 1 { self.pos[1] = 1; }
+        if self.pos[0] < 1 {
+            self.pos[0] = valley[0] - 2;
+        }
+        if self.pos[0] >= valley[0] - 1 {
+            self.pos[0] = 1;
+        }
+        if self.pos[1] < 1 {
+            self.pos[1] = valley[1] - 2;
+        }
+        if self.pos[1] >= valley[1] - 1 {
+            self.pos[1] = 1;
+        }
     }
 }
 
@@ -57,8 +69,12 @@ impl Map {
     }
 
     fn at_time(&mut self, t: i32) -> &State {
-        if ! self.states.contains_key(&t) {
-            let state = self.tick(self.states.get(&(t - 1)).expect("search tried to step twice?"));
+        if !self.states.contains_key(&t) {
+            let state = self.tick(
+                self.states
+                    .get(&(t - 1))
+                    .expect("search tried to step twice?"),
+            );
             self.states.insert(t, state);
         }
         self.states.get(&t).unwrap()
@@ -82,28 +98,37 @@ impl Map {
         for b in next.iter() {
             occ.insert(b.pos);
         }
-        State { blizzards: next, occupied: occ, t }
+        State {
+            blizzards: next,
+            occupied: occ,
+            t,
+        }
     }
 
     fn h(&self, p: [i32; 3]) -> usize {
-        ((self.end[0] - p[0]).abs() + (self.end[1] - p[1]).abs() + p[2]).try_into().unwrap()
+        ((self.end[0] - p[0]).abs() + (self.end[1] - p[1]).abs() + p[2])
+            .try_into()
+            .unwrap()
     }
 
     fn can_step(&mut self, current: [i32; 3], offset: [i32; 3]) -> Option<[i32; 3]> {
         let next = vec3_add(current, offset);
-        if self.end == [next[0], next[1]] ||self.start == [next[0], next[1]]  {
+        if self.end == [next[0], next[1]] || self.start == [next[0], next[1]] {
             return Some(next);
         }
-        if next[0] < 1 || next[0] > self.valley[0] - 2 || next[1] < 1 || next[1] > self.valley[1] - 2 {
-            return None
+        if next[0] < 1
+            || next[0] > self.valley[0] - 2
+            || next[1] < 1
+            || next[1] > self.valley[1] - 2
+        {
+            return None;
         }
         let state = self.at_time(next[2]);
         if state.occupied.contains(&[next[0], next[1]]) {
-            return None
+            return None;
         }
         Some(next)
     }
-
 }
 
 impl From<&str> for Map {
@@ -116,25 +141,44 @@ impl From<&str> for Map {
         let mut lines = input.lines();
 
         // north wall
-        let top = lines.next().expect("must have at least one line in the map");
+        let top = lines
+            .next()
+            .expect("must have at least one line in the map");
         valley[0] = top.len() as i32;
-        start[0] = top.find('.').expect("there should be a door in the north wall") as i32;
+        start[0] = top
+            .find('.')
+            .expect("there should be a door in the north wall") as i32;
         for line in lines {
             let j = valley[1];
             let bytes = line.to_string().into_bytes();
             if bytes.iter().filter(|b| **b == '#' as u8).count() > 2 {
                 // south wall
                 end[1] = valley[1];
-                end[0] = line.find('.').expect("there should be a door in the south wall") as i32;
+                end[0] = line
+                    .find('.')
+                    .expect("there should be a door in the south wall")
+                    as i32;
             } else {
                 for i in 1..(valley[0] as usize - 1) {
                     match bytes[i] as char {
                         '.' => (),
                         '#' => panic!("found a wall inside the valley"),
-                        '^' => blizzards.push(Blizzard{ pos: [i as i32, j as i32], dir: North }),
-                        '>' => blizzards.push(Blizzard{ pos: [i as i32, j as i32], dir: East }),
-                        'v' => blizzards.push(Blizzard{ pos: [i as i32, j as i32], dir: South }),
-                        '<' => blizzards.push(Blizzard{ pos: [i as i32, j as i32], dir: West }),
+                        '^' => blizzards.push(Blizzard {
+                            pos: [i as i32, j as i32],
+                            dir: North,
+                        }),
+                        '>' => blizzards.push(Blizzard {
+                            pos: [i as i32, j as i32],
+                            dir: East,
+                        }),
+                        'v' => blizzards.push(Blizzard {
+                            pos: [i as i32, j as i32],
+                            dir: South,
+                        }),
+                        '<' => blizzards.push(Blizzard {
+                            pos: [i as i32, j as i32],
+                            dir: West,
+                        }),
                         _ => panic!("illegal map character"),
                     }
                 }
@@ -145,11 +189,23 @@ impl From<&str> for Map {
         for b in blizzards.iter() {
             occ.insert(b.pos);
         }
-        states.insert(0, State { blizzards: blizzards.clone(), occupied: occ, t: 0});
-        Map { blizzards, valley, start, end, states}
+        states.insert(
+            0,
+            State {
+                blizzards: blizzards.clone(),
+                occupied: occ,
+                t: 0,
+            },
+        );
+        Map {
+            blizzards,
+            valley,
+            start,
+            end,
+            states,
+        }
     }
 }
-
 
 fn shortest_path_through_spacetime(map: &mut Map) -> usize {
     // https://en.wikipedia.org/wiki/A*_search_algorithm
@@ -198,7 +254,10 @@ fn main() {
     println!("end at {:?}", map.end);
     println!("valley is {:?} size", map.valley);
     println!("there are {:?} blizzards", map.blizzards.len());
-    println!("shortest path is: {}", shortest_path_through_spacetime(&mut map));
+    println!(
+        "shortest path is: {}",
+        shortest_path_through_spacetime(&mut map)
+    );
 }
 
 #[cfg(test)]
@@ -214,7 +273,7 @@ mod tests {
     #[test]
     fn test_parse_input() {
         let map = Map::from(SAMPLE);
-        assert_eq!(map.start, [1, 0] ,"wrong start");
+        assert_eq!(map.start, [1, 0], "wrong start");
         assert_eq!(map.end, [6, 5], "wrong end");
         assert_eq!(map.valley, [8, 6], "wrong valley size");
         assert_eq!(map.blizzards.len(), 19);
@@ -254,12 +313,12 @@ mod tests {
         assert_eq!(state.blizzards[0].pos, [2, 1]); // East
         assert_eq!(state.blizzards[9].pos, [2, 4]); // South
         assert_eq!(state.blizzards[2].pos, [3, 1]); // West
-        assert_eq!(state.blizzards[14].pos, [2, 3]); // North 
-        // wrapped
+        assert_eq!(state.blizzards[14].pos, [2, 3]); // North
+                                                     // wrapped
         assert_eq!(state.blizzards[12].pos, [1, 3]); // East
         assert_eq!(state.blizzards[15].pos, [3, 1]); // South
         assert_eq!(state.blizzards[13].pos, [6, 4]); // West
-        assert_eq!(state.blizzards[3].pos, [5, 4]); // North 
+        assert_eq!(state.blizzards[3].pos, [5, 4]); // North
     }
     #[test]
     fn test_at_t_5() {
@@ -269,7 +328,7 @@ mod tests {
         let state = map.at_time(3);
         let state = map.at_time(4);
         let state = map.at_time(5);
-        assert!(state.occupied.contains(&[1, 1])); 
+        assert!(state.occupied.contains(&[1, 1]));
     }
     #[test]
     fn test_poath_finder() {
