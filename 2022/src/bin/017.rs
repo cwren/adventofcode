@@ -1,12 +1,12 @@
 use std::fmt::Display;
 use std::fs;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashSet, HashMap, VecDeque};
 use vecmath::{vec2_add, Vector2};
 
 type Int = i64;
 type Coord = Vector2<Int>;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
 enum Move {
     Left,
     Right,
@@ -15,16 +15,18 @@ use Move::{Left, Right};
 
 struct Moves {
     q: VecDeque<Move>,
+    n: usize,
 }
 
 impl From<&str> for Moves {
     fn from(s: &str) -> Self {
-        Moves { q: s.trim().chars().map(Move::from).collect::<VecDeque<Move>>() }
+        Moves { q: s.trim().chars().map(Move::from).collect::<VecDeque<Move>>(), n: 0 }
     }
 }
 
 impl Moves {
     fn next(&mut self) -> Move {
+        self.n = (self.n + 1) % self.q.len();
         let m = self.q.pop_front();
         match m {
             Some(m) => {
@@ -36,7 +38,7 @@ impl Moves {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 enum Piece {
     Bar,
     Cross,
@@ -87,6 +89,7 @@ fn next_piece(prev: &Piece) -> Piece {
 #[derive(Debug)]
 struct Board {
     top: Int,
+    n: Int,
     occupied: HashSet<Coord>,
     piece: Piece,
     pos: Coord,
@@ -130,7 +133,7 @@ impl Display for Board {
 
 impl Board {
     fn new () -> Self {
-        Board{ top: 0, occupied: HashSet::new(), piece: Bar, pos: [2, 3], w: 7 }
+        Board{ top: 0, occupied: HashSet::new(), piece: Bar, pos: [2, 3], w: 7, n: 0}
     }
 
     fn execute(&mut self, m: Move) {
@@ -170,6 +173,7 @@ impl Board {
             self.top = self.top.max(p[1] + 1);
             self.occupied.insert(p);
         }
+        self.n += 1;
     }
     
     fn drop(&mut self, moves: &mut Moves) {
@@ -189,6 +193,57 @@ impl Board {
         }
         self.occupied = defragged;
     }
+
+    fn find_repeat(&mut self, moves: &mut Moves) -> (i64, i64) {
+       let mut memory = HashMap::new();
+       loop {
+            let fingerprint = Fingerprint::new(self, &moves);
+            if let Some((rock, top)) = memory.get(&fingerprint) {
+               return (*rock, *top);
+            }
+            memory.insert(fingerprint, (self.n, self.top));
+            self.drop(moves);
+       }
+    }
+
+    fn power_drop(&mut self, moves: &mut Moves, goal: Int) -> Int {
+        let (preamble_n, preamble_top) = self.find_repeat(moves);
+        let loop_length = self.n - preamble_n;
+        println!("found a loop of {} starting at {}", loop_length, preamble_n);
+        let loop_gain = self.top - preamble_top;
+        let remaining = goal - preamble_n;
+        let loops = remaining / loop_length;
+        let loops_gain = loops * loop_gain;
+        let remaining = remaining % loop_length;
+        let remain_base = self.top;
+        for _ in 0..remaining {
+            self.drop(moves);
+        }
+        preamble_top + loops_gain + (self.top - remain_base)
+    }
+}
+
+#[derive(Debug, Eq, Hash, PartialEq)]
+struct Fingerprint {
+    p: Piece,
+    m: usize,
+    t: Vec<Int>,
+}
+
+impl Fingerprint {
+    fn new(board: &Board, moves: &Moves) -> Self {
+        let p = board.piece;
+        let m = moves.n;
+        let mut t = Vec::new();
+        for i in 0..board.w {
+            let mut j = board.top;
+            while !board.occupied(&[i, j]) && j >= 0 {
+                j -= 1;
+            }
+            t.push(board.top - j);
+        }
+        Self { p, m, t }
+    }
 }
 
 fn main() {
@@ -203,10 +258,8 @@ fn main() {
 
     let mut moves = Moves::from(input);
     let mut board = Board::new();
-    for _ in 0..1_000_000 {
-        board.drop(&mut moves);
-    }
-    println!("top of structure after 1M blocks is {}", board.top);
+    let top = board.power_drop(&mut moves, 1_000_000_000_000_i64);
+    println!("top of structure after 1T blocks is {}", top);
 }
 
 #[cfg(test)]
@@ -340,27 +393,47 @@ mod tests {
     }
 
     #[test]
-    fn test_periodicity() {
+    fn test_fingerprint() {
         let mut moves = Moves::from(SAMPLE);
         let mut board = Board::new();
-        for _ in 0..(5i64 * moves.q.len() as i64) {
+        let mut memory = HashSet::new();
+        memory.insert(Fingerprint::new(&board, &moves));
+        for _ in 0..28 {
             board.drop(&mut moves);
         }
-        println!("{board}");
-        for _ in 0..(5i64 * moves.q.len() as i64) {
+        let f28 = Fingerprint::new(&board, &moves);
+        assert!(!memory.contains(&f28));
+        memory.insert(f28);
+        for _ in 28..63 {
             board.drop(&mut moves);
         }
-        println!("{board}");
-        assert!(false);
+        let f63 = Fingerprint::new(&board, &moves);
+        assert!(memory.contains(&f63));
+        for _ in 63..98 {
+            board.drop(&mut moves);
+        }
+        let f98 = Fingerprint::new(&board, &moves);
+        assert!(memory.contains(&f98));
+
+        // let mut memory = HashSet::new();
+        // let fb = Fingerprint {};
+        // let fb = Fingerprint {};
+    }
+
+    #[test]
+    fn test_find_loops() {
+        let mut moves = Moves::from(SAMPLE);
+        let mut board = Board::new();
+        assert_eq!(board.find_repeat(&mut moves), (28, 49));
+        assert_eq!(board.n, 63);
+        assert_eq!(board.top, 102);
     }
 
     #[test]
     fn test_terra_drop() {
         let mut moves = Moves::from(SAMPLE);
         let mut board = Board::new();
-        for _ in 0..(1_000_000_000_000i64 % (5i64 * moves.q.len() as i64)) {
-            board.drop(&mut moves);
-        }
-        assert_eq!(board.top, 1_514_285_714_288i64);
+        let top = board.power_drop(&mut moves, 1_000_000_000_000_i64);
+        assert_eq!(top, 1_514_285_714_288_i64);
     }
 }
