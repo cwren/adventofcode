@@ -1,6 +1,6 @@
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Display;
 use std::fs;
-use std::collections::{HashSet, HashMap, VecDeque};
 use vecmath::{vec2_add, Vector2};
 
 type Int = i64;
@@ -20,7 +20,10 @@ struct Moves {
 
 impl From<&str> for Moves {
     fn from(s: &str) -> Self {
-        Moves { q: s.trim().chars().map(Move::from).collect::<VecDeque<Move>>(), n: 0 }
+        Moves {
+            q: s.trim().chars().map(Move::from).collect::<VecDeque<Move>>(),
+            n: 0,
+        }
     }
 }
 
@@ -52,16 +55,31 @@ struct Sprite {
     w: Int,
     blocks: Vec<Coord>,
 }
-use Piece::{Bar, Cross, Ell, Stick, Square};
+use Piece::{Bar, Cross, Ell, Square, Stick};
 
 impl Sprite {
     fn get(piece: &Piece) -> Self {
         match piece {
-            Bar => Sprite { w: 4, blocks: vec![[0,0], [1,0], [2,0], [3,0]] },
-            Cross => Sprite { w: 3, blocks: vec![[0,1], [1,0], [1,1], [1,2], [2,1]] },
-            Ell => Sprite { w: 3, blocks: vec![[0,0], [1,0], [2,0], [2,1], [2,2]] },
-            Stick => Sprite { w: 1, blocks: vec![[0,0], [0,1], [0,2], [0,3]] },
-            Square => Sprite { w: 2, blocks: vec![[0,0], [0,1], [1,0], [1,1]] },
+            Bar => Sprite {
+                w: 4,
+                blocks: vec![[0, 0], [1, 0], [2, 0], [3, 0]],
+            },
+            Cross => Sprite {
+                w: 3,
+                blocks: vec![[0, 1], [1, 0], [1, 1], [1, 2], [2, 1]],
+            },
+            Ell => Sprite {
+                w: 3,
+                blocks: vec![[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]],
+            },
+            Stick => Sprite {
+                w: 1,
+                blocks: vec![[0, 0], [0, 1], [0, 2], [0, 3]],
+            },
+            Square => Sprite {
+                w: 2,
+                blocks: vec![[0, 0], [0, 1], [1, 0], [1, 1]],
+            },
         }
     }
 }
@@ -132,8 +150,15 @@ impl Display for Board {
 }
 
 impl Board {
-    fn new () -> Self {
-        Board{ top: 0, occupied: HashSet::new(), piece: Bar, pos: [2, 3], w: 7, n: 0}
+    fn new() -> Self {
+        Board {
+            top: 0,
+            occupied: HashSet::new(),
+            piece: Bar,
+            pos: [2, 3],
+            w: 7,
+            n: 0,
+        }
     }
 
     fn execute(&mut self, m: Move) {
@@ -145,7 +170,9 @@ impl Board {
                 }
             }
             Right => {
-                if (self.pos[0] + sprite.w) < self.w && !self.collide(&sprite, &vec2_add(self.pos, [1, 0])) {
+                if (self.pos[0] + sprite.w) < self.w
+                    && !self.collide(&sprite, &vec2_add(self.pos, [1, 0]))
+                {
                     self.pos[0] += 1;
                 }
             }
@@ -160,7 +187,10 @@ impl Board {
     }
 
     fn collide(&self, sprite: &Sprite, pos: &Coord) -> bool {
-        sprite.blocks.iter().any(|block| self.occupied(&vec2_add(*pos, *block)))
+        sprite
+            .blocks
+            .iter()
+            .any(|block| self.occupied(&vec2_add(*pos, *block)))
     }
 
     fn occupied(&self, p: &Coord) -> bool {
@@ -175,7 +205,7 @@ impl Board {
         }
         self.n += 1;
     }
-    
+
     fn drop(&mut self, moves: &mut Moves) {
         let start = self.piece;
         while self.piece == start {
@@ -195,15 +225,15 @@ impl Board {
     }
 
     fn find_repeat(&mut self, moves: &mut Moves) -> (i64, i64) {
-       let mut memory = HashMap::new();
-       loop {
+        let mut memory = HashMap::new();
+        loop {
             let fingerprint = Fingerprint::new(self, moves);
             if let Some((rock, top)) = memory.get(&fingerprint) {
-               return (*rock, *top);
+                return (*rock, *top);
             }
             memory.insert(fingerprint, (self.n, self.top));
             self.drop(moves);
-       }
+        }
     }
 
     fn power_drop(&mut self, moves: &mut Moves, goal: Int) -> Int {
@@ -362,12 +392,11 @@ mod tests {
             board.execute(moves.next());
         }
         while board.piece == Square {
-        println!("{board}");
+            println!("{board}");
             board.execute(moves.next());
         }
         println!("{board}");
         assert_eq!(board.top, 17);
-
     }
 
     #[test]
