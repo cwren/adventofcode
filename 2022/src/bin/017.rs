@@ -106,7 +106,7 @@ impl Display for Board {
             sprite_blocks.insert(coord);
             top = top.max(coord[1]);
         }
-        top = top + 1;
+        top += 1;
         for i in 0..top {
             let y = top - i - 1;
             let mut row = String::with_capacity(self.w as usize + 2);
@@ -122,12 +122,12 @@ impl Display for Board {
                 }
             }
             row.push('|');
-            write!(f, "{row}\n")?;
+            writeln!(f, "{row}")?;
         }
-        let bottom = std::iter::repeat("-").take(self.w as usize + 2).collect::<String>();
-        write!(f, "{bottom}\n")?;
-        write!(f, "top: {}\n", self.top)?;
-        write!(f, "piece: {:?}\n", self.piece)
+        let bottom = "-".repeat(self.w as usize + 2);
+        writeln!(f, "{bottom}")?;
+        writeln!(f, "top: {}", self.top)?;
+        writeln!(f, "piece: {:?}", self.piece)
     }
 }
 
@@ -197,7 +197,7 @@ impl Board {
     fn find_repeat(&mut self, moves: &mut Moves) -> (i64, i64) {
        let mut memory = HashMap::new();
        loop {
-            let fingerprint = Fingerprint::new(self, &moves);
+            let fingerprint = Fingerprint::new(self, moves);
             if let Some((rock, top)) = memory.get(&fingerprint) {
                return (*rock, *top);
             }
@@ -209,7 +209,7 @@ impl Board {
     fn power_drop(&mut self, moves: &mut Moves, goal: Int) -> Int {
         let (preamble_n, preamble_top) = self.find_repeat(moves);
         let loop_length = self.n - preamble_n;
-        println!("found a loop of {} starting at {}", loop_length, preamble_n);
+        println!("found a loop of {loop_length} starting at {preamble_n}");
         let loop_gain = self.top - preamble_top;
         let remaining = goal - preamble_n;
         let loops = remaining / loop_length;
@@ -259,7 +259,7 @@ fn main() {
     let mut moves = Moves::from(input);
     let mut board = Board::new();
     let top = board.power_drop(&mut moves, 1_000_000_000_000_i64);
-    println!("top of structure after 1T blocks is {}", top);
+    println!("top of structure after 1T blocks is {top}");
 }
 
 #[cfg(test)]
