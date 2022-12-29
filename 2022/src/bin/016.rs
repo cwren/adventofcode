@@ -207,15 +207,18 @@ impl Network {
         for (ka, _) in self.valves.iter() {
             for (kb, _) in self.valves.iter() {
                 if ka <= kb {
-                    let n = self.shortest_path(*ka, *kb);
-                    self.routes.insert((*ka, *kb), n);
-                    self.routes.insert((*kb, *ka), n);
-                }
+                    if let Some(n) = self.shortest_path(*ka, *kb) {
+			self.routes.insert((*ka, *kb), n);
+			self.routes.insert((*kb, *ka), n);
+		    } else {
+			panic!("No path from {} to {}", Valve::label(*ka), Valve::label(*kb));
+		    }
+		}
             }
         }
     }
 
-    fn shortest_path(&self, from: Key, to: Key) -> usize {
+    fn shortest_path(&self, from: Key, to: Key) -> Option<usize> {
         // https://en.wikipedia.org/wiki/A*_search_algorithm
         let longest = self.valves.len() + 1;
         let mut open = DoublePriorityQueue::new();
@@ -237,7 +240,7 @@ impl Network {
                     p = *q;
                 }
                 path.reverse();
-                return path.len();
+                return Some(path.len());
             }
             for neighbor in self.valves.get(&current).unwrap().tunnels.keys() {
                 let tentative_g_score = 1 + g_score.get(&current).unwrap_or(&longest);
@@ -248,7 +251,7 @@ impl Network {
                 }
             }
         }
-        usize::MAX
+        None
     }
 
     fn optimal_plan(&self, start: &str) -> usize {
@@ -263,12 +266,29 @@ impl Network {
             start, 0,  // pressure
             0,  // rate
             30, // depth
-            &closed,
+            &mut closed,
         );
         println!("best plan is: {:?}", plan.actions);
         println!("presumptive score is {}", plan.score);
         println!("actual score is {}", plan.execute(self, &Valve::key("AA")));
         plan.score
+    }
+
+    fn utility(&self, f: Key, t: Key, closed: &HashSet<Key>, depth: usize) -> f64 {
+	let reward = self.valves.get(&t).expect("unknwon valve").rate as f64;
+	let there = *self.routes.get(&(f, t)).expect("unknwon route");
+	if there > depth {
+	    return 0_f64;
+	}
+	let there = there as f64;
+	let mut back = usize::MAX;
+	for k in closed {
+	    if t != *k {
+		back = back.min(*self.routes.get(&(t, *k)).expect("unknwon route"));
+	    }
+	}
+	let back = back as f64;
+	reward / (there + back)
     }
 
     fn optimal_plan_worker(
@@ -277,37 +297,51 @@ impl Network {
         pressure: usize,
         rate: usize,
         depth: usize,
-        closed: &HashSet<Key>,
+        closed: &mut HashSet<Key>,
     ) -> Plan {
-        //let prefix = " ".repeat(30 - depth);
+	println!("{} @ {}", Valve::label(start), depth);
         if depth == 0 {
+	    println!("end of time: {}", pressure);
             return Plan::empty(pressure);
         }
-        let start = self.valves.get(&start).expect("unknwon valve");
+        let start = self.valves.get(&start).expect("unknown valve");
         let rate = rate + start.rate;
-        let mut closed = closed.clone();
-        let mut best = Plan::empty(pressure);
         closed.remove(&start.key);
         if closed.is_empty() {
-            best.score = pressure + (depth * rate);
-            best.insert(&Wait);
+            let mut wait = Plan::empty(pressure);
+            wait.score = pressure + (depth * rate);
+            wait.insert(&Wait);
             if start.rate > 0 {
-                best.insert(&Open(start.key));
+                wait.insert(&Open(start.key));
             }
-            return best;
+            return wait;
         }
+	let mut best = (0, 0_f64);
         for next in closed.iter() {
-            let steps = self.routes.get(&(start.key, *next)).expect("unknown node") + 1;
-            let pressure = pressure + (rate * steps);
-            let new_plan = self.optimal_plan_worker(*next, pressure, rate, depth - steps, &closed);
-            if new_plan.score > best.score {
-                best = new_plan;
+            let guess = self.utility(start.key, *next, closed, depth);
+            if guess > best.1 {
+                best = (*next, guess);
             }
         }
-        if start.rate > 0 {
-            best.insert(&Open(start.key));
-        }
-        return best;
+        if let Some(steps) = self.routes.get(&(start.key, best.0)) {
+	    let steps = steps + 1;
+	    let pressure = pressure + (rate * steps);
+	    println!("stepping {} to {}", steps, Valve::label(best.0));
+	    let mut new_plan = self.optimal_plan_worker(best.0, pressure, rate, depth - steps, closed);
+            if start.rate > 0 {
+		new_plan.insert(&Open(start.key));
+            }
+            return new_plan;
+	} else {
+	    // nowhere left to go
+            let mut wait = Plan::empty(pressure);
+            wait.score = pressure + (depth * rate);
+            wait.insert(&Wait);
+            if start.rate > 0 {
+                wait.insert(&Open(start.key));
+            }
+            return wait;
+	}
     }
 }
 
@@ -319,6 +353,7 @@ fn main() {
         "the optimal plan releases {} inches of pressure",
         network.optimal_plan("AA")
     );
+    // 1745 is too low
 }
 
 #[cfg(test)]
@@ -473,11 +508,11 @@ Valve JJ has flow rate=21; tunnel leads to valve II"#;
         let jj = Valve::key("JJ");
         let hh = Valve::key("HH");
         let network: Network = Network::from(SAMPLE.lines());
-        assert_eq!(network.shortest_path(aa, aa), 0);
-        assert_eq!(network.shortest_path(aa, bb), 1);
-        assert_eq!(network.shortest_path(aa, jj), 2);
-        assert_eq!(network.shortest_path(aa, hh), 5);
-        assert_eq!(network.shortest_path(jj, hh), 7);
+        assert_eq!(network.shortest_path(aa, aa).unwrap(), 0);
+        assert_eq!(network.shortest_path(aa, bb).unwrap(), 1);
+        assert_eq!(network.shortest_path(aa, jj).unwrap(), 2);
+        assert_eq!(network.shortest_path(aa, hh).unwrap(), 5);
+        assert_eq!(network.shortest_path(jj, hh).unwrap(), 7);
 
         assert_eq!(network.routes.get(&(aa, aa)).unwrap(), &0);
         assert_eq!(network.routes.get(&(aa, bb)).unwrap(), &1);
