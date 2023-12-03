@@ -13,7 +13,7 @@ fn main() {
         .collect();
     let numbers = parse_numbers(lines.clone());
     println!("numerical sum is {:?}", numbers.iter().sum::<u32>());
-    let words = parse_words(lines.clone());
+    let words = parse_words(lines);
     println!("word sum is {:?}", words.iter().sum::<u32>());
 }
 
@@ -27,12 +27,12 @@ fn parse_number(input: &str) -> u32 {
         Some(caps) => {
             let tens = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
             let ones = caps.get(2).unwrap().as_str().parse::<u32>().unwrap();
-            return 10 * tens + ones;
+            10 * tens + ones
         }
         None => {
             let cap = calib_1_re.captures(input).unwrap();
             let digit = cap.get(1).unwrap().as_str().parse::<u32>().unwrap();
-            return 10 * digit + digit;
+            10 * digit + digit
         }
     }
 }
@@ -68,7 +68,7 @@ fn parse_word(input: &str) -> String {
             &_ => {}
         }
     }
-    translated.to_string()
+    translated
 }
 
 fn parse_words(lines: Vec<String>) -> Vec<u32> {
