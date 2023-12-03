@@ -55,7 +55,7 @@ impl Sample {
 fn score(games: &Vec<Game>, probe: &Sample) -> u32 {
     games
         .iter()
-        .filter(|g| g.possible(&probe))
+        .filter(|g| g.possible(probe))
         .map(|g| g.id)
         .sum::<u32>()
 }
@@ -85,20 +85,20 @@ fn main() {
 }
 
 fn parse_game(input: &str) -> Game {
-    let parts = input.split(":").collect::<Vec<_>>();
+    let parts = input.split(':').collect::<Vec<_>>();
     let header = parts[0];
-    let id = header.split(" ").collect::<Vec<_>>()[1]
+    let id = header.split(' ').collect::<Vec<_>>()[1]
         .parse::<u32>()
         .unwrap();
     let body = parts[1];
-    let turns_desc = body.split(";").collect::<Vec<_>>();
+    let turns_desc = body.split(';').collect::<Vec<_>>();
     let mut turns = Vec::new();
     for desc in turns_desc {
         let mut red = 0;
         let mut green = 0;
         let mut blue = 0;
-        for count in desc.split(",") {
-            let data = count.split(" ").collect::<Vec<_>>();
+        for count in desc.split(',') {
+            let data = count.split(' ').collect::<Vec<_>>();
             let n = data[1].parse::<u32>().unwrap();
             match data[2] {
                 "red" => red = n,
@@ -108,14 +108,14 @@ fn parse_game(input: &str) -> Game {
             }
         }
         turns.push(Sample {
-            red: red,
-            green: green,
-            blue: blue,
+            red,
+            green,
+            blue,
         });
     }
     Game {
-        id: id,
-        turns: turns,
+        id,
+        turns,
     }
 }
 
