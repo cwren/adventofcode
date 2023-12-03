@@ -6,3 +6,5 @@ cargo run --bin 001
 rustfmt src/bin/001.rs
 cargo clippy --fix
 ```
+
+Do not try to use rust-mode in emacs: it is busted.
