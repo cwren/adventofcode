@@ -79,12 +79,12 @@ impl Cog for (usize, usize) {
             }
         }
         if pieces.len() >= 2 {
-            return Some(Gear {
-                pos: self.clone(),
-                pieces: pieces,
-            });
+            Some(Gear {
+                pos: *self,
+                pieces,
+            })
         } else {
-            return None;
+            None
         }
     }
 }
@@ -97,7 +97,7 @@ fn load_schematic(lines: Vec<String>) -> Vec<Vec<char>> {
         let values: Vec<char> = items
             .skip(1)
             .take(n)
-            .map(|s| s.chars().nth(0).expect("empty cell"))
+            .map(|s| s.chars().next().expect("empty cell"))
             .collect();
         schematic.push(values);
     }
@@ -111,17 +111,15 @@ fn find_numbers(schematic: &Vec<Vec<char>>) -> Vec<Number> {
         let len = schematic[i].len();
         for j in 0..(len + 1) {
             if j < len && schematic[i][j].is_ascii_digit() {
-                if inhand == None {
+                if inhand.is_none() {
                     inhand = Some((i, j));
                 }
-            } else {
-                if let Some(p) = inhand {
-                    let s: String = schematic[i][p.1..j].iter().collect();
-                    let v = s.parse::<u32>().expect("found a non-integer");
-                    let n = j - p.1;
-                    numbers.push(Number { v, p, n });
-                    inhand = None;
-                }
+            } else if let Some(p) = inhand {
+                let s: String = schematic[i][p.1..j].iter().collect();
+                let v = s.parse::<u32>().expect("found a non-integer");
+                let n = j - p.1;
+                numbers.push(Number { v, p, n });
+                inhand = None;
             }
         }
     }
@@ -151,19 +149,19 @@ fn main() {
     let schematic = load_schematic(lines);
     let numbers = find_numbers(&schematic);
     let sum = score_adjacent(&numbers, &schematic);
-    println!("sum of adjacent parts is {}", sum);
+    println!("sum of adjacent parts is {sum}");
     // 528231 too low
 
     let cogs = find_cogs(&schematic);
-    let gears: Vec<_> = cogs.iter().map(|c| c.is_gear(&numbers)).flatten().collect();
+    let gears: Vec<_> = cogs.iter().filter_map(|c| c.is_gear(&numbers)).collect();
     let gear_sum = score_gears(&gears);
-    println!("sum of gear ratiosis {}", gear_sum);
+    println!("sum of gear ratiosis {gear_sum}");
 }
 
 fn score_adjacent(numbers: &Vec<Number>, schematic: &Vec<Vec<char>>) -> u32 {
     numbers
         .iter()
-        .filter(|n| n.adjacent(&schematic))
+        .filter(|n| n.adjacent(schematic))
         .map(|n| n.v)
         .sum::<u32>()
 }
@@ -325,9 +323,9 @@ mod tests {
         let schematic = load_schematic(SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>());
         let numbers = find_numbers(&schematic);
         let cogs = find_cogs(&schematic);
-        let gears: Vec<_> = cogs.iter().map(|c| c.is_gear(&numbers)).flatten().collect();
+        let gears: Vec<_> = cogs.iter().filter_map(|c| c.is_gear(&numbers)).collect();
         assert_eq!(gears.len(), 2);
-        let sum = score_gears(&gears);
+        let _sum = score_gears(&gears);
         assert_eq!(gears.len(), 2);
     }
 }
