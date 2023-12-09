@@ -4,7 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
+
         {
             "type": "lldb",
             "request": "launch",
@@ -152,6 +152,43 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}"
-        }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable '004'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=004",
+                    "--package=advent2023"
+                ],
+                "filter": {
+                    "name": "004",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable '004'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=004",
+                    "--package=advent2023"
+                ],
+                "filter": {
+                    "name": "004",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
     ]
 }
