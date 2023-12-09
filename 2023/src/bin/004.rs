@@ -21,17 +21,17 @@ impl FromStr for Card {
         let (card, numbers) = s.split_once(": ").ok_or(ParseCardError)?;
         let id = card.strip_prefix("Card ").ok_or(ParseCardError)?;
         let id = id
-            .replace(" ", "")
+            .replace(' ', "")
             .parse::<u32>()
             .map_err(|_| ParseCardError)?;
         let (winners, holds) = numbers.split_once(" | ").ok_or(ParseCardError)?;
         let w = winners
-            .split(" ")
+            .split(' ')
             .filter(|s| !s.is_empty())
             .map(|n| n.parse::<i32>().expect("found a non-integer"))
             .collect::<Vec<i32>>();
         let h = holds
-            .split(" ")
+            .split(' ')
             .filter(|s| !s.is_empty())
             .map(|n| n.parse::<i32>().expect("found a non-integer"))
             .collect::<Vec<i32>>();
@@ -50,7 +50,7 @@ fn score_card(card: &Card) -> u32 {
     let match_count = count_matches(card);
     match match_count {
         0 => 0,
-        _ => (2 as u32).pow((match_count - 1) as u32),
+        _ => 2_u32.pow(match_count - 1),
     }
 }
 
@@ -89,7 +89,7 @@ fn main() {
         .map(|l| l.expect("Could not read line"))
         .collect();
     let cards = load_cards(lines);
-    let total: u32 = cards.iter().map(|c| score_card(c)).sum();
+    let total: u32 = cards.iter().map(score_card).sum();
     println!("total score is {total}");
 
     let card_count = score_deck(&cards);
@@ -132,7 +132,7 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11"#;
         assert_eq!(score_card(&cards[3]), 1);
         assert_eq!(score_card(&cards[4]), 0);
         assert_eq!(score_card(&cards[5]), 0);
-        let total: u32 = cards.iter().map(|c| score_card(c)).sum();
+        let total: u32 = cards.iter().map(score_card).sum();
         assert_eq!(total, 13);
     }
 
