@@ -8,3 +8,6 @@ cargo clippy --fix
 ```
 
 Do not try to use rust-mode in emacs: it is busted.
+
+vscode:
+- CodeLLDB by Vadim Chugunov
