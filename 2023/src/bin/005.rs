@@ -53,25 +53,25 @@ impl From<&Vec<String>> for Almanac {
             .collect::<Vec<u64>>();
 
         assert_eq!(lines[2], "seed-to-soil map:");
-        let (i, seed_to_soil) = Almanac::load_map(3, &lines);
+        let (i, seed_to_soil) = Almanac::load_map(3, lines);
 
         assert_eq!(lines[i], "soil-to-fertilizer map:");
-        let (i, soil_to_fertilizer) = Almanac::load_map(i + 1, &lines);
+        let (i, soil_to_fertilizer) = Almanac::load_map(i + 1, lines);
 
         assert_eq!(lines[i], "fertilizer-to-water map:");
-        let (i, fertilizer_to_water) = Almanac::load_map(i + 1, &lines);
+        let (i, fertilizer_to_water) = Almanac::load_map(i + 1, lines);
 
         assert_eq!(lines[i], "water-to-light map:");
-        let (i, water_to_light) = Almanac::load_map(i + 1, &lines);
+        let (i, water_to_light) = Almanac::load_map(i + 1, lines);
 
         assert_eq!(lines[i], "light-to-temperature map:");
-        let (i, light_to_temperature) = Almanac::load_map(i + 1, &lines);
+        let (i, light_to_temperature) = Almanac::load_map(i + 1, lines);
 
         assert_eq!(lines[i], "temperature-to-humidity map:");
-        let (i, temperature_to_humidity) = Almanac::load_map(i + 1, &lines);
+        let (i, temperature_to_humidity) = Almanac::load_map(i + 1, lines);
 
         assert_eq!(lines[i], "humidity-to-location map:");
-        let (_, humidity_to_location) = Almanac::load_map(i + 1, &lines);
+        let (_, humidity_to_location) = Almanac::load_map(i + 1, lines);
 
         Almanac {
             seeds,
@@ -120,7 +120,7 @@ impl Processor {
                 .push(Box::new(move |a| Processor::rmap(a, d, s, l))
                     as Box<dyn Fn(u64) -> Option<u64>>);
         }
-        processor.push(Box::new(move |a| Some(a)));
+        processor.push(Box::new(Some));
         processor
     }
 
