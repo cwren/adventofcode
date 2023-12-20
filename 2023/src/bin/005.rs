@@ -4,13 +4,13 @@ use std::io::BufReader;
 
 struct Almanac {
     seeds: Vec<u64>,
-    seed_to_soil: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
-    soil_to_fertilizer: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
-    fertilizer_to_water: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
-    water_to_light: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
-    light_to_temperature: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
-    temperature_to_humidity: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
-    humidity_to_location: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+    seed_to_soil: Vec<(u64, u64, u64)>,
+    soil_to_fertilizer: Vec<(u64, u64, u64)>,
+    fertilizer_to_water: Vec<(u64, u64, u64)>,
+    water_to_light: Vec<(u64, u64, u64)>,
+    light_to_temperature: Vec<(u64, u64, u64)>,
+    temperature_to_humidity: Vec<(u64, u64, u64)>,
+    humidity_to_location: Vec<(u64, u64, u64)>,
 }
 
 impl Almanac {
@@ -28,7 +28,18 @@ impl Almanac {
     }
 }
 
-impl Almanac {
+struct Processor {
+    seeds: Vec<u64>,
+    seed_to_soil: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+    soil_to_fertilizer: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+    fertilizer_to_water: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+    water_to_light: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+    light_to_temperature: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+    temperature_to_humidity: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+    humidity_to_location: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+}
+
+impl Processor {
     fn closest(self) -> u64 {
         self.seeds
             .iter()
@@ -46,7 +57,8 @@ fn rmap(a: u64, d: u64, s: u64, l: u64) -> Option<u64> {
     }
 }
 
-fn load_map(j: usize, lines: &Vec<String>) -> (usize, Vec<Box<dyn Fn(u64) -> Option<u64>>>) {
+
+fn load_map(j: usize, lines: &Vec<String>) -> (usize, Vec<(u64,u64,u64)>) {
     let mut map = Vec::new();
     let mut i = j;
     // destination start, source start, range length
@@ -56,10 +68,9 @@ fn load_map(j: usize, lines: &Vec<String>) -> (usize, Vec<Box<dyn Fn(u64) -> Opt
         let d = args[0].parse::<u64>().expect("bad map");
         let s = args[1].parse::<u64>().expect("bad map");
         let l = args[2].parse::<u64>().expect("bad map");
-        map.push(Box::new(move |a| rmap(a, d, s, l)) as Box<dyn Fn(u64) -> Option<u64>>);
+        map.push((d, s, l));
         i += 1;
     }
-    map.push(Box::new(move |a| Some(a)));
     (i, map)
 }
 
@@ -114,6 +125,34 @@ fn load_almanac(lines: Vec<String>)-> Almanac {
     almanac
 }
 
+fn make_processor(map: &Vec<(u64,u64,u64)>) -> Vec<Box<dyn Fn(u64) -> Option<u64>>> {
+    let mut processor = Vec::new();
+    // destination start, source start, range length
+    for tup in map {
+        let d = tup.0;
+        let s = tup.1;
+        let l = tup.2;
+        processor.push(Box::new(move |a| rmap(a, d, s, l)) as Box<dyn Fn(u64) -> Option<u64>>);
+    }
+    processor.push(Box::new(move |a| Some(a)));
+    processor
+}
+
+impl From<&Almanac> for Processor {
+    fn from(almanac: &Almanac) -> Self {
+        Processor { 
+            seeds: almanac.seeds.clone(),
+            seed_to_soil: make_processor(&almanac.seed_to_soil),
+            soil_to_fertilizer: make_processor(&almanac.soil_to_fertilizer),
+            fertilizer_to_water: make_processor(&almanac.fertilizer_to_water),
+            water_to_light: make_processor(&almanac.water_to_light),
+            light_to_temperature: make_processor(&almanac.light_to_temperature),
+            temperature_to_humidity: make_processor(&almanac.temperature_to_humidity),
+            humidity_to_location: make_processor(&almanac.humidity_to_location),
+        }
+    }
+}
+
 fn map(a: u64, map: &Vec<Box<dyn Fn(u64) -> Option<u64>>>) -> u64 {
     for m in map {
         if let Some(b) = m(a) {
@@ -123,14 +162,14 @@ fn map(a: u64, map: &Vec<Box<dyn Fn(u64) -> Option<u64>>>) -> u64 {
     a
 }
 
-fn seed_to_location(seed: u64, almanac: &Almanac) -> u64 {
-    let soil = map(seed, &almanac.seed_to_soil);
-    let fertilizer = map(soil, &almanac.soil_to_fertilizer);
-    let water = map(fertilizer, &almanac.fertilizer_to_water);
-    let light = map(water, &almanac.water_to_light);
-    let temperature = map(light, &almanac.light_to_temperature);
-    let humidity = map(temperature, &almanac.temperature_to_humidity);
-    map(humidity, &almanac.humidity_to_location)
+fn seed_to_location(seed: u64, processor: &Processor) -> u64 {
+    let soil = map(seed, &processor.seed_to_soil);
+    let fertilizer = map(soil, &processor.soil_to_fertilizer);
+    let water = map(fertilizer, &processor.fertilizer_to_water);
+    let light = map(water, &processor.water_to_light);
+    let temperature = map(light, &processor.light_to_temperature);
+    let humidity = map(temperature, &processor.temperature_to_humidity);
+    map(humidity, &processor.humidity_to_location)
 }
 
 fn main() {
@@ -141,7 +180,8 @@ fn main() {
         .map(|l| l.expect("Could not read line"))
         .collect();
     let almanac = load_almanac(lines);
-    println!("nearest seed is at {}", almanac.closest());
+    let processor = Processor::from(&almanac);
+    println!("nearest seed is at {}", processor.closest());
 }
 
 #[cfg(test)]
@@ -200,39 +240,57 @@ humidity-to-location map:
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = load_almanac(lines);
         assert_eq!(almanac.seeds.len(), 4);
-        assert_eq!(almanac.seed_to_soil.len(), 3);
-        assert_eq!(almanac.soil_to_fertilizer.len(), 4);
-        assert_eq!(almanac.fertilizer_to_water.len(), 5);
-        assert_eq!(almanac.water_to_light.len(), 3);
-        assert_eq!(almanac.light_to_temperature.len(), 4);
-        assert_eq!(almanac.temperature_to_humidity.len(), 3);
-        assert_eq!(almanac.humidity_to_location.len(), 3);
+        assert_eq!(almanac.seed_to_soil.len(), 2);
+        assert_eq!(almanac.soil_to_fertilizer.len(), 3);
+        assert_eq!(almanac.fertilizer_to_water.len(), 4);
+        assert_eq!(almanac.water_to_light.len(), 2);
+        assert_eq!(almanac.light_to_temperature.len(), 3);
+        assert_eq!(almanac.temperature_to_humidity.len(), 2);
+        assert_eq!(almanac.humidity_to_location.len(), 2);
+    }
+
+    #[test]
+    fn test_from() {
+        let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+        let almanac = load_almanac(lines);
+        let processor = Processor::from(&almanac);
+        assert_eq!(processor.seeds.len(), 4);
+        assert_eq!(processor.seed_to_soil.len(), 3);
+        assert_eq!(processor.soil_to_fertilizer.len(), 4);
+        assert_eq!(processor.fertilizer_to_water.len(), 5);
+        assert_eq!(processor.water_to_light.len(), 3);
+        assert_eq!(processor.light_to_temperature.len(), 4);
+        assert_eq!(processor.temperature_to_humidity.len(), 3);
+        assert_eq!(processor.humidity_to_location.len(), 3);
     }
 
     #[test]
     fn test_mapper() {
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = load_almanac(lines);
-        assert_eq!(map(79, &almanac.seed_to_soil), 81);
-        assert_eq!(map(14, &almanac.seed_to_soil), 14);
-        assert_eq!(map(55, &almanac.seed_to_soil), 57);
-        assert_eq!(map(13, &almanac.seed_to_soil), 13);
+        let processor = Processor::from(&almanac);
+        assert_eq!(map(79, &processor.seed_to_soil), 81);
+        assert_eq!(map(14, &processor.seed_to_soil), 14);
+        assert_eq!(map(55, &processor.seed_to_soil), 57);
+        assert_eq!(map(13, &processor.seed_to_soil), 13);
     }
 
     #[test]
     fn test_seed_to_location() {
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = load_almanac(lines);
-        assert_eq!(seed_to_location(79, &almanac), 82);
-        assert_eq!(seed_to_location(14, &almanac), 43);
-        assert_eq!(seed_to_location(55, &almanac), 86);
-        assert_eq!(seed_to_location(13, &almanac), 35);
+        let processor = Processor::from(&almanac);
+        assert_eq!(seed_to_location(79, &processor), 82);
+        assert_eq!(seed_to_location(14, &processor), 43);
+        assert_eq!(seed_to_location(55, &processor), 86);
+        assert_eq!(seed_to_location(13, &processor), 35);
     }
 
     #[test]
     fn test_closest() {
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = load_almanac(lines);
-        assert_eq!(almanac.closest(), 35);
+        let processor = Processor::from(&almanac);
+        assert_eq!(processor.closest(), 35);
     }
 }
