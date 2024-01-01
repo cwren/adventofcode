@@ -6,7 +6,7 @@ use std::io::BufReader;
 struct Range {
     d: u64,
     s: u64,
-    l: u64
+    l: u64,
 }
 struct Almanac {
     seeds: Vec<u64>,
@@ -53,7 +53,7 @@ impl Almanac {
             let d = args[0].parse::<u64>().expect("bad map");
             let s = args[1].parse::<u64>().expect("bad map");
             let l = args[2].parse::<u64>().expect("bad map");
-            map.push(Range{d, s, l});
+            map.push(Range { d, s, l });
             i += 1;
         }
         (i + 1, map)
@@ -149,9 +149,9 @@ impl Farmer {
             let d = range.d;
             let s = range.s;
             let l = range.l;
-            processor
-                .push(Box::new(move |a| Farmer::rmap(a, d, s, l))
-                    as Box<dyn Fn(u64) -> Option<u64>>);
+            processor.push(
+                Box::new(move |a| Farmer::rmap(a, d, s, l)) as Box<dyn Fn(u64) -> Option<u64>>
+            );
         }
         processor.push(Box::new(Some));
         processor
@@ -185,9 +185,8 @@ impl Farmer {
     }
 }
 
-
 impl Mill {
-   fn grind(input: &Lot, stones: &Vec<Range>) -> Vec<Lot> {
+    fn grind(input: &Lot, stones: &Vec<Range>) -> Vec<Lot> {
         let mut todo: Vec<Lot> = Vec::new();
         let mut done: Vec<Lot> = Vec::new();
         todo.push(input.clone());
@@ -386,49 +385,129 @@ humidity-to-location map:
 
     #[test]
     fn test_grind_one_seed() {
-        let output = Mill::grind(&(82, 1), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(
+            &(82, 1),
+            &vec![
+                Range { d: 50, s: 98, l: 2 },
+                Range {
+                    d: 52,
+                    s: 50,
+                    l: 48,
+                },
+            ],
+        );
         assert_eq!(output, vec![(84, 1)]);
     }
 
     #[test]
     fn test_grind_disjoint_before() {
-        let output = Mill::grind(&(20, 20), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(
+            &(20, 20),
+            &vec![
+                Range { d: 50, s: 98, l: 2 },
+                Range {
+                    d: 52,
+                    s: 50,
+                    l: 48,
+                },
+            ],
+        );
         assert_eq!(output, vec![(20, 20)]);
     }
 
     #[test]
     fn test_grind_disjoint_after() {
-        let output = Mill::grind(&(100, 110), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(
+            &(100, 110),
+            &vec![
+                Range { d: 50, s: 98, l: 2 },
+                Range {
+                    d: 52,
+                    s: 50,
+                    l: 48,
+                },
+            ],
+        );
         assert_eq!(output, vec![(100, 110)]);
     }
 
     #[test]
     fn test_grind_overlap_before() {
-        let output = Mill::grind(&(40, 20), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(
+            &(40, 20),
+            &vec![
+                Range { d: 50, s: 98, l: 2 },
+                Range {
+                    d: 52,
+                    s: 50,
+                    l: 48,
+                },
+            ],
+        );
         assert_eq!(output, vec![(40, 10), (52, 10)]);
     }
 
     #[test]
     fn test_grind_overlap_after_first() {
-        let output = Mill::grind(&(99, 10), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(
+            &(99, 10),
+            &vec![
+                Range { d: 50, s: 98, l: 2 },
+                Range {
+                    d: 52,
+                    s: 50,
+                    l: 48,
+                },
+            ],
+        );
         assert_eq!(output, vec![(51, 1), (100, 9)]);
     }
 
     #[test]
     fn test_grind_overlap_after_second() {
-        let output = Mill::grind(&(99, 10), &vec![Range{d:52, s:50, l:48}, Range{d:50, s:98, l:2}]);
+        let output = Mill::grind(
+            &(99, 10),
+            &vec![
+                Range {
+                    d: 52,
+                    s: 50,
+                    l: 48,
+                },
+                Range { d: 50, s: 98, l: 2 },
+            ],
+        );
         assert_eq!(output, vec![(51, 1), (100, 9)]);
     }
 
     #[test]
     fn test_grind_overlap_two_stones() {
-        let output = Mill::grind(&(90, 10), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(
+            &(90, 10),
+            &vec![
+                Range { d: 50, s: 98, l: 2 },
+                Range {
+                    d: 52,
+                    s: 50,
+                    l: 48,
+                },
+            ],
+        );
         assert_eq!(output, vec![(50, 2), (92, 8)]);
     }
 
     #[test]
     fn test_grind_complete_overlap() {
-        let output = Mill::grind(&(40, 90), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(
+            &(40, 90),
+            &vec![
+                Range { d: 50, s: 98, l: 2 },
+                Range {
+                    d: 52,
+                    s: 50,
+                    l: 48,
+                },
+            ],
+        );
         assert_eq!(output, vec![(40, 10), (50, 2), (52, 48), (100, 30)]);
     }
 
@@ -437,13 +516,28 @@ humidity-to-location map:
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = Almanac::from(&lines);
         let mill = Mill::from(&almanac);
-        assert_eq!(Mill::grind(&(82, 1), &mill.seed_to_soil),            vec![(84, 1)]);
-        assert_eq!(Mill::grind(&(84, 1), &mill.soil_to_fertilizer),      vec![(84, 1)]);
-        assert_eq!(Mill::grind(&(84, 1), &mill.fertilizer_to_water),     vec![(84, 1)]);
-        assert_eq!(Mill::grind(&(84, 1), &mill.water_to_light),          vec![(77, 1)]);
-        assert_eq!(Mill::grind(&(77, 1), &mill.light_to_temperature),    vec![(45, 1)]);
-        assert_eq!(Mill::grind(&(45, 1), &mill.temperature_to_humidity), vec![(46, 1)]);
-        assert_eq!(Mill::grind(&(46, 1), &mill.humidity_to_location),    vec![(46, 1)]);
+        assert_eq!(Mill::grind(&(82, 1), &mill.seed_to_soil), vec![(84, 1)]);
+        assert_eq!(
+            Mill::grind(&(84, 1), &mill.soil_to_fertilizer),
+            vec![(84, 1)]
+        );
+        assert_eq!(
+            Mill::grind(&(84, 1), &mill.fertilizer_to_water),
+            vec![(84, 1)]
+        );
+        assert_eq!(Mill::grind(&(84, 1), &mill.water_to_light), vec![(77, 1)]);
+        assert_eq!(
+            Mill::grind(&(77, 1), &mill.light_to_temperature),
+            vec![(45, 1)]
+        );
+        assert_eq!(
+            Mill::grind(&(45, 1), &mill.temperature_to_humidity),
+            vec![(46, 1)]
+        );
+        assert_eq!(
+            Mill::grind(&(46, 1), &mill.humidity_to_location),
+            vec![(46, 1)]
+        );
     }
 
     #[test]
