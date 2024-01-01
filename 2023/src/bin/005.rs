@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
+#[derive(Clone)]
 struct Range {
     d: u64,
     s: u64,
@@ -32,6 +33,13 @@ struct Farmer {
 type Lot = (u64, u64);
 struct Mill {
     lots: Vec<Lot>,
+    seed_to_soil: Vec<Range>,
+    soil_to_fertilizer: Vec<Range>,
+    fertilizer_to_water: Vec<Range>,
+    water_to_light: Vec<Range>,
+    light_to_temperature: Vec<Range>,
+    temperature_to_humidity: Vec<Range>,
+    humidity_to_location: Vec<Range>,
 }
 
 impl Almanac {
@@ -115,13 +123,13 @@ impl From<&Almanac> for Mill {
     fn from(almanac: &Almanac) -> Self {
         Mill {
             lots: almanac.seeds.chunks(2).map(|c| (c[0], c[1])).collect(),
-            // seed_to_soil: 
-            // soil_to_fertilizer: 
-            // fertilizer_to_water: 
-            // water_to_light: 
-            // light_to_temperature: 
-            // temperature_to_humidity: 
-            // humidity_to_location: 
+            seed_to_soil: almanac.seed_to_soil.clone(),
+            soil_to_fertilizer: almanac.soil_to_fertilizer.clone(),
+            fertilizer_to_water: almanac.fertilizer_to_water.clone(),
+            water_to_light: almanac.water_to_light.clone(),
+            light_to_temperature: almanac.light_to_temperature.clone(),
+            temperature_to_humidity: almanac.temperature_to_humidity.clone(),
+            humidity_to_location: almanac.humidity_to_location.clone(),
         }
     }
 }
@@ -179,10 +187,10 @@ impl Farmer {
 
 
 impl Mill {
-   fn grind(input: Lot, stones: Vec<Range>) -> Vec<Lot> {
+   fn grind(input: &Lot, stones: &Vec<Range>) -> Vec<Lot> {
         let mut todo: Vec<Lot> = Vec::new();
         let mut done: Vec<Lot> = Vec::new();
-        todo.push(input);
+        todo.push(input.clone());
         for stone in stones {
             let source_end = stone.s + stone.l;
             let mut hold: Vec<Lot> = Vec::new();
@@ -201,7 +209,7 @@ impl Mill {
                     }
                 } else if lot.0 < source_end {
                     if lot_end <= source_end {
-                        done.push((stone.d + lot.0 - stone.s, source_end - lot.0));
+                        done.push((stone.d + lot.0 - stone.s, lot.1));
                     } else {
                         hold.push((source_end, lot_end - source_end));
                         done.push((stone.d + lot.0 - stone.s, source_end - lot.0));
@@ -216,6 +224,29 @@ impl Mill {
         done.sort();
         done
     }
+
+    fn process(input: &Vec<Lot>, stones: &Vec<Range>) -> Vec<Lot> {
+        let mut output: Vec<Lot> = Vec::new();
+        for lot in input {
+            output.extend(Mill::grind(lot, stones));
+        }
+        output
+    }
+
+    fn closest(&self) -> u64 {
+        let soil = Mill::process(&self.lots, &self.seed_to_soil);
+        let fertilizer = Mill::process(&soil, &self.soil_to_fertilizer);
+        let water = Mill::process(&fertilizer, &self.fertilizer_to_water);
+        let light = Mill::process(&water, &self.water_to_light);
+        let temperature = Mill::process(&light, &self.light_to_temperature);
+        let humidity = Mill::process(&temperature, &self.temperature_to_humidity);
+        let locations = Mill::process(&humidity, &self.humidity_to_location);
+        let mut closest = u64::MAX;
+        for location in locations {
+            closest = closest.min(location.0);
+        }
+        closest
+    }
 }
 
 fn main() {
@@ -228,6 +259,9 @@ fn main() {
     let almanac = Almanac::from(&lines);
     let processor = Farmer::from(&almanac);
     println!("nearest seed is at {}", processor.closest());
+
+    let mill = Mill::from(&almanac);
+    println!("nearest lot is at {}", mill.closest());
 }
 
 #[cfg(test)]
@@ -351,52 +385,72 @@ humidity-to-location map:
     }
 
     #[test]
+    fn test_grind_one_seed() {
+        let output = Mill::grind(&(82, 1), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        assert_eq!(output, vec![(84, 1)]);
+    }
+
+    #[test]
     fn test_grind_disjoint_before() {
-        let output = Mill::grind((20, 20), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(&(20, 20), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
         assert_eq!(output, vec![(20, 20)]);
     }
 
     #[test]
     fn test_grind_disjoint_after() {
-        let output = Mill::grind((100, 110), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(&(100, 110), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
         assert_eq!(output, vec![(100, 110)]);
     }
 
     #[test]
     fn test_grind_overlap_before() {
-        let output = Mill::grind((40, 20), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(&(40, 20), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
         assert_eq!(output, vec![(40, 10), (52, 10)]);
     }
 
     #[test]
     fn test_grind_overlap_after_first() {
-        let output = Mill::grind((99, 10), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(&(99, 10), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
         assert_eq!(output, vec![(51, 1), (100, 9)]);
     }
 
     #[test]
     fn test_grind_overlap_after_second() {
-        let output = Mill::grind((99, 10), vec![Range{d:52, s:50, l:48}, Range{d:50, s:98, l:2}]);
+        let output = Mill::grind(&(99, 10), &vec![Range{d:52, s:50, l:48}, Range{d:50, s:98, l:2}]);
         assert_eq!(output, vec![(51, 1), (100, 9)]);
     }
 
     #[test]
     fn test_grind_overlap_two_stones() {
-        let output = Mill::grind((90, 10), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(&(90, 10), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
         assert_eq!(output, vec![(50, 2), (92, 8)]);
     }
 
     #[test]
     fn test_grind_complete_overlap() {
-        let output = Mill::grind((40, 90), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        let output = Mill::grind(&(40, 90), &vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
         assert_eq!(output, vec![(40, 10), (50, 2), (52, 48), (100, 30)]);
+    }
+
+    #[test]
+    fn test_winning_path() {
+        let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+        let almanac = Almanac::from(&lines);
+        let mill = Mill::from(&almanac);
+        assert_eq!(Mill::grind(&(82, 1), &mill.seed_to_soil),            vec![(84, 1)]);
+        assert_eq!(Mill::grind(&(84, 1), &mill.soil_to_fertilizer),      vec![(84, 1)]);
+        assert_eq!(Mill::grind(&(84, 1), &mill.fertilizer_to_water),     vec![(84, 1)]);
+        assert_eq!(Mill::grind(&(84, 1), &mill.water_to_light),          vec![(77, 1)]);
+        assert_eq!(Mill::grind(&(77, 1), &mill.light_to_temperature),    vec![(45, 1)]);
+        assert_eq!(Mill::grind(&(45, 1), &mill.temperature_to_humidity), vec![(46, 1)]);
+        assert_eq!(Mill::grind(&(46, 1), &mill.humidity_to_location),    vec![(46, 1)]);
     }
 
     #[test]
     fn test_first_harvest() {
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = Almanac::from(&lines);
-        // let mill = Mill::from(&almanac);
-        // assert_eq!(mill.closest(), 46);
+        let mill = Mill::from(&almanac);
+        assert_eq!(mill.closest(), 46);
     }
 }
