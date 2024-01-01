@@ -13,7 +13,7 @@ struct Almanac {
     humidity_to_location: Vec<(u64, u64, u64)>,
 }
 
-struct Processor {
+struct Farmer {
     seeds: Vec<u64>,
     seed_to_soil: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
     soil_to_fertilizer: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
@@ -22,6 +22,10 @@ struct Processor {
     light_to_temperature: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
     temperature_to_humidity: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
     humidity_to_location: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
+}
+
+struct Mill {
+    seeds: Vec<u64>
 }
 
 impl Almanac {
@@ -86,21 +90,22 @@ impl From<&Vec<String>> for Almanac {
     }
 }
 
-impl From<&Almanac> for Processor {
+impl From<&Almanac> for Farmer {
     fn from(almanac: &Almanac) -> Self {
-        Processor {
+        Farmer {
             seeds: almanac.seeds.clone(),
-            seed_to_soil: Processor::compile(&almanac.seed_to_soil),
-            soil_to_fertilizer: Processor::compile(&almanac.soil_to_fertilizer),
-            fertilizer_to_water: Processor::compile(&almanac.fertilizer_to_water),
-            water_to_light: Processor::compile(&almanac.water_to_light),
-            light_to_temperature: Processor::compile(&almanac.light_to_temperature),
-            temperature_to_humidity: Processor::compile(&almanac.temperature_to_humidity),
-            humidity_to_location: Processor::compile(&almanac.humidity_to_location),
+            seed_to_soil: Farmer::compile(&almanac.seed_to_soil),
+            soil_to_fertilizer: Farmer::compile(&almanac.soil_to_fertilizer),
+            fertilizer_to_water: Farmer::compile(&almanac.fertilizer_to_water),
+            water_to_light: Farmer::compile(&almanac.water_to_light),
+            light_to_temperature: Farmer::compile(&almanac.light_to_temperature),
+            temperature_to_humidity: Farmer::compile(&almanac.temperature_to_humidity),
+            humidity_to_location: Farmer::compile(&almanac.humidity_to_location),
         }
     }
 }
-impl Processor {
+
+impl Farmer {
     fn closest(&self) -> u64 {
         self.seeds
             .iter()
@@ -117,7 +122,7 @@ impl Processor {
             let s = tup.1;
             let l = tup.2;
             processor
-                .push(Box::new(move |a| Processor::rmap(a, d, s, l))
+                .push(Box::new(move |a| Farmer::rmap(a, d, s, l))
                     as Box<dyn Fn(u64) -> Option<u64>>);
         }
         processor.push(Box::new(Some));
@@ -142,15 +147,27 @@ impl Processor {
     }
 
     fn seed_to_location(&self, seed: u64) -> u64 {
-        let soil = Processor::map(seed, &self.seed_to_soil);
-        let fertilizer = Processor::map(soil, &self.soil_to_fertilizer);
-        let water = Processor::map(fertilizer, &self.fertilizer_to_water);
-        let light = Processor::map(water, &self.water_to_light);
-        let temperature = Processor::map(light, &self.light_to_temperature);
-        let humidity = Processor::map(temperature, &self.temperature_to_humidity);
-        Processor::map(humidity, &self.humidity_to_location)
+        let soil = Farmer::map(seed, &self.seed_to_soil);
+        let fertilizer = Farmer::map(soil, &self.soil_to_fertilizer);
+        let water = Farmer::map(fertilizer, &self.fertilizer_to_water);
+        let light = Farmer::map(water, &self.water_to_light);
+        let temperature = Farmer::map(light, &self.light_to_temperature);
+        let humidity = Farmer::map(temperature, &self.temperature_to_humidity);
+        Farmer::map(humidity, &self.humidity_to_location)
     }
 }
+
+
+//impl Mill {
+//    fn grind(input: (u64, u64), stone: Fn(u64) -> Option<u64>>>) -> u64 {
+//        for m in map {
+//            if let Some(b) = m(a) {
+//                return b;
+//            }
+//        }
+//       a
+//    }
+//}
 
 fn main() {
     let f = File::open("input/005.txt").expect("File Error");
@@ -160,7 +177,7 @@ fn main() {
         .map(|l| l.expect("Could not read line"))
         .collect();
     let almanac = Almanac::from(&lines);
-    let processor = Processor::from(&almanac);
+    let processor = Farmer::from(&almanac);
     println!("nearest seed is at {}", processor.closest());
 }
 
@@ -233,7 +250,7 @@ humidity-to-location map:
     fn test_from() {
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = Almanac::from(&lines);
-        let processor = Processor::from(&almanac);
+        let processor = Farmer::from(&almanac);
         assert_eq!(processor.seeds.len(), 4);
         assert_eq!(processor.seed_to_soil.len(), 3);
         assert_eq!(processor.soil_to_fertilizer.len(), 4);
@@ -248,18 +265,18 @@ humidity-to-location map:
     fn test_mapper() {
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = Almanac::from(&lines);
-        let processor = Processor::from(&almanac);
-        assert_eq!(Processor::map(79, &processor.seed_to_soil), 81);
-        assert_eq!(Processor::map(14, &processor.seed_to_soil), 14);
-        assert_eq!(Processor::map(55, &processor.seed_to_soil), 57);
-        assert_eq!(Processor::map(13, &processor.seed_to_soil), 13);
+        let processor = Farmer::from(&almanac);
+        assert_eq!(Farmer::map(79, &processor.seed_to_soil), 81);
+        assert_eq!(Farmer::map(14, &processor.seed_to_soil), 14);
+        assert_eq!(Farmer::map(55, &processor.seed_to_soil), 57);
+        assert_eq!(Farmer::map(13, &processor.seed_to_soil), 13);
     }
 
     #[test]
     fn test_seed_to_location() {
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = Almanac::from(&lines);
-        let processor = Processor::from(&almanac);
+        let processor = Farmer::from(&almanac);
         assert_eq!(processor.seed_to_location(79), 82);
         assert_eq!(processor.seed_to_location(14), 43);
         assert_eq!(processor.seed_to_location(55), 86);
@@ -270,7 +287,11 @@ humidity-to-location map:
     fn test_closest() {
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let almanac = Almanac::from(&lines);
-        let processor = Processor::from(&almanac);
+        let processor = Farmer::from(&almanac);
         assert_eq!(processor.closest(), 35);
+    }
+
+    #[test]
+    fn test_first_harvest() {
     }
 }
