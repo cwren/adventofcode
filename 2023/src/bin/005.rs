@@ -2,15 +2,20 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
+struct Range {
+    d: u64,
+    s: u64,
+    l: u64
+}
 struct Almanac {
     seeds: Vec<u64>,
-    seed_to_soil: Vec<(u64, u64, u64)>,
-    soil_to_fertilizer: Vec<(u64, u64, u64)>,
-    fertilizer_to_water: Vec<(u64, u64, u64)>,
-    water_to_light: Vec<(u64, u64, u64)>,
-    light_to_temperature: Vec<(u64, u64, u64)>,
-    temperature_to_humidity: Vec<(u64, u64, u64)>,
-    humidity_to_location: Vec<(u64, u64, u64)>,
+    seed_to_soil: Vec<Range>,
+    soil_to_fertilizer: Vec<Range>,
+    fertilizer_to_water: Vec<Range>,
+    water_to_light: Vec<Range>,
+    light_to_temperature: Vec<Range>,
+    temperature_to_humidity: Vec<Range>,
+    humidity_to_location: Vec<Range>,
 }
 
 struct Farmer {
@@ -24,12 +29,13 @@ struct Farmer {
     humidity_to_location: Vec<Box<dyn Fn(u64) -> Option<u64>>>,
 }
 
+type Lot = (u64, u64);
 struct Mill {
-    seeds: Vec<u64>
+    lots: Vec<Lot>,
 }
 
 impl Almanac {
-    fn load_map(j: usize, lines: &Vec<String>) -> (usize, Vec<(u64, u64, u64)>) {
+    fn load_map(j: usize, lines: &Vec<String>) -> (usize, Vec<Range>) {
         let mut map = Vec::new();
         let mut i = j;
         // destination start, source start, range length
@@ -39,7 +45,7 @@ impl Almanac {
             let d = args[0].parse::<u64>().expect("bad map");
             let s = args[1].parse::<u64>().expect("bad map");
             let l = args[2].parse::<u64>().expect("bad map");
-            map.push((d, s, l));
+            map.push(Range{d, s, l});
             i += 1;
         }
         (i + 1, map)
@@ -105,6 +111,21 @@ impl From<&Almanac> for Farmer {
     }
 }
 
+impl From<&Almanac> for Mill {
+    fn from(almanac: &Almanac) -> Self {
+        Mill {
+            lots: almanac.seeds.chunks(2).map(|c| (c[0], c[1])).collect(),
+            // seed_to_soil: 
+            // soil_to_fertilizer: 
+            // fertilizer_to_water: 
+            // water_to_light: 
+            // light_to_temperature: 
+            // temperature_to_humidity: 
+            // humidity_to_location: 
+        }
+    }
+}
+
 impl Farmer {
     fn closest(&self) -> u64 {
         self.seeds
@@ -114,13 +135,12 @@ impl Farmer {
             .expect("there's no minimum?")
     }
 
-    fn compile(map: &Vec<(u64, u64, u64)>) -> Vec<Box<dyn Fn(u64) -> Option<u64>>> {
+    fn compile(ranges: &Vec<Range>) -> Vec<Box<dyn Fn(u64) -> Option<u64>>> {
         let mut processor = Vec::new();
-        // destination start, source start, range length
-        for tup in map {
-            let d = tup.0;
-            let s = tup.1;
-            let l = tup.2;
+        for range in ranges {
+            let d = range.d;
+            let s = range.s;
+            let l = range.l;
             processor
                 .push(Box::new(move |a| Farmer::rmap(a, d, s, l))
                     as Box<dyn Fn(u64) -> Option<u64>>);
@@ -158,16 +178,45 @@ impl Farmer {
 }
 
 
-//impl Mill {
-//    fn grind(input: (u64, u64), stone: Fn(u64) -> Option<u64>>>) -> u64 {
-//        for m in map {
-//            if let Some(b) = m(a) {
-//                return b;
-//            }
-//        }
-//       a
-//    }
-//}
+impl Mill {
+   fn grind(input: Lot, stones: Vec<Range>) -> Vec<Lot> {
+        let mut todo: Vec<Lot> = Vec::new();
+        let mut done: Vec<Lot> = Vec::new();
+        todo.push(input);
+        for stone in stones {
+            let source_end = stone.s + stone.l;
+            let mut hold: Vec<Lot> = Vec::new();
+            for lot in todo {
+                let lot_end = lot.0 + lot.1;
+                if lot.0 < stone.s {
+                    if lot_end < stone.s {
+                        hold.push(lot);
+                    } else if lot_end <= source_end {
+                        hold.push((lot.0, stone.s - lot.0));
+                        done.push((stone.d, lot_end - stone.s));
+                    } else {
+                        hold.push((lot.0, stone.s - lot.0));
+                        hold.push((source_end, lot_end - source_end));
+                        done.push((stone.d, stone.l));
+                    }
+                } else if lot.0 < source_end {
+                    if lot_end <= source_end {
+                        done.push((stone.d + lot.0 - stone.s, source_end - lot.0));
+                    } else {
+                        hold.push((source_end, lot_end - source_end));
+                        done.push((stone.d + lot.0 - stone.s, source_end - lot.0));
+                    }
+                } else {
+                    hold.push(lot);
+                }
+            }
+            todo = hold;
+        }
+        done.extend(todo); // untouched lots pass through identically
+        done.sort();
+        done
+    }
+}
 
 fn main() {
     let f = File::open("input/005.txt").expect("File Error");
@@ -292,6 +341,62 @@ humidity-to-location map:
     }
 
     #[test]
+    fn test_lots() {
+        let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+        let almanac = Almanac::from(&lines);
+        let mill = Mill::from(&almanac);
+        assert_eq!(mill.lots.len(), 2);
+        assert_eq!(mill.lots[0], (79, 14));
+        assert_eq!(mill.lots[1], (55, 13));
+    }
+
+    #[test]
+    fn test_grind_disjoint_before() {
+        let output = Mill::grind((20, 20), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        assert_eq!(output, vec![(20, 20)]);
+    }
+
+    #[test]
+    fn test_grind_disjoint_after() {
+        let output = Mill::grind((100, 110), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        assert_eq!(output, vec![(100, 110)]);
+    }
+
+    #[test]
+    fn test_grind_overlap_before() {
+        let output = Mill::grind((40, 20), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        assert_eq!(output, vec![(40, 10), (52, 10)]);
+    }
+
+    #[test]
+    fn test_grind_overlap_after_first() {
+        let output = Mill::grind((99, 10), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        assert_eq!(output, vec![(51, 1), (100, 9)]);
+    }
+
+    #[test]
+    fn test_grind_overlap_after_second() {
+        let output = Mill::grind((99, 10), vec![Range{d:52, s:50, l:48}, Range{d:50, s:98, l:2}]);
+        assert_eq!(output, vec![(51, 1), (100, 9)]);
+    }
+
+    #[test]
+    fn test_grind_overlap_two_stones() {
+        let output = Mill::grind((90, 10), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        assert_eq!(output, vec![(50, 2), (92, 8)]);
+    }
+
+    #[test]
+    fn test_grind_complete_overlap() {
+        let output = Mill::grind((40, 90), vec![Range{d:50, s:98, l:2}, Range{d:52, s:50, l:48}]);
+        assert_eq!(output, vec![(40, 10), (50, 2), (52, 48), (100, 30)]);
+    }
+
+    #[test]
     fn test_first_harvest() {
+        let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+        let almanac = Almanac::from(&lines);
+        // let mill = Mill::from(&almanac);
+        // assert_eq!(mill.closest(), 46);
     }
 }
