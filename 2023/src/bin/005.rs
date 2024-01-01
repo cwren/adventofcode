@@ -189,7 +189,7 @@ impl Mill {
     fn grind(input: &Lot, stones: &Vec<Range>) -> Vec<Lot> {
         let mut todo: Vec<Lot> = Vec::new();
         let mut done: Vec<Lot> = Vec::new();
-        todo.push(input.clone());
+        todo.push(*input);
         for stone in stones {
             let source_end = stone.s + stone.l;
             let mut hold: Vec<Lot> = Vec::new();
