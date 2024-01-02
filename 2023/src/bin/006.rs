@@ -22,7 +22,7 @@ fn win_count(race: &Race) -> u64 {
 fn compete(events: &Vec<Race>) -> u64 {
     let mut power = 1;
     for event in events {
-        power *= win_count(&event);
+        power *= win_count(event);
     }
     power
 }
@@ -37,14 +37,14 @@ fn main() {
         Race { t: 66, d: 1041 },
     ];
     let power = compete(&shorts);
-    println!("product of winning combos is {}", power);
+    println!("product of winning combos is {power}");
 
     let long = Race {
         t: 61709066,
         d: 643118413621041u64,
     };
     let ways_to_win = win_count(&long);
-    println!("number of winning strategies is {}", ways_to_win);
+    println!("number of winning strategies is {ways_to_win}");
 }
 
 #[cfg(test)]
