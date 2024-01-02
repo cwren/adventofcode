@@ -245,6 +245,43 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}"
+        },        
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable '006'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=006",
+                    "--package=advent2023"
+                ],
+                "filter": {
+                    "name": "006",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable '006'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=006",
+                    "--package=advent2023"
+                ],
+                "filter": {
+                    "name": "006",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
         },
     ]
 }
