@@ -227,5 +227,24 @@
             "args": [],
             "cwd": "${workspaceFolder}"
         },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable '105'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=105",
+                    "--package=advent2023"
+                ],
+                "filter": {
+                    "name": "105",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
     ]
 }
