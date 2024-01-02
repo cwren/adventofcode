@@ -1,18 +1,13 @@
-use interval::Interval;
-use interval::IntervalSet;
-use interval::ops::*;
-use gcollections::ops::*;
-use std::ops::*;
-use interval::interval_set::ToIntervalSet;
-
 fn main() {
 }
 
 #[cfg(test)]
 mod tests {
-
-
-    use crate::*;
+    use interval::Interval;
+    use interval::IntervalSet;
+    use interval::ops::*;
+    use gcollections::ops::*;
+    use interval::interval_set::ToIntervalSet;
 
     #[test]
     fn test_basics() {
@@ -33,7 +28,6 @@ mod tests {
         let a = Interval::new(0, 5);
         let b = Interval::new(3, 7);
         let c = Interval::new(9, 11);
-        let d = Interval::singleton(10);
         assert_eq!(a.intersection(&b), Interval::new(3, 5));
         assert_eq!(a.intersection(&c), Interval::empty());
         assert_eq!(a.join(b), Interval::new(3, 5)); // synonym for intersect?
@@ -60,7 +54,7 @@ mod tests {
 
         let e = a.union(&vec![(10, 12)].to_interval_set());
         assert_eq!(e.interval_count(), 2);
-        assert_eq!(e.iter().nth(0), Some(&Interval::new(0, 5)));
+        assert_eq!(e.iter().next(), Some(&Interval::new(0, 5)));
         assert_eq!(e.iter().nth(1), Some(&Interval::new(10, 12)));
         
         let f = IntervalSet::new(2, 3);
