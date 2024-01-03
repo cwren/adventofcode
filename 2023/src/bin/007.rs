@@ -1,10 +1,10 @@
 use lazy_static::lazy_static;
-use std::cmp::Ordering;
 use std::cmp::min;
+use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::collections::HashMap;
 
 #[derive(Clone)]
 struct Deck {
@@ -26,7 +26,12 @@ impl From<&String> for Hand {
             let bid = b.parse::<u32>().unwrap();
             let cards = c.chars().collect::<Vec<char>>();
             let class = Hand::classify(&cards);
-            Hand { cards, bid, class, wild: None }
+            Hand {
+                cards,
+                bid,
+                class,
+                wild: None,
+            }
         } else {
             panic!("bad hand {line}");
         }
@@ -34,12 +39,10 @@ impl From<&String> for Hand {
 }
 impl From<&Vec<String>> for Deck {
     fn from(lines: &Vec<String>) -> Self {
-        Deck { 
-            hands: lines.iter()
-                .map(|l| Hand::from(l))
-                .collect(),
+        Deck {
+            hands: lines.iter().map(|l| Hand::from(l)).collect(),
             wild: None,
-        }   
+        }
     }
 }
 
@@ -55,21 +58,18 @@ impl PartialOrd for Hand {
             let n = min(self.cards.len(), other.cards.len());
             for i in 0..n {
                 if self.cards[i] != other.cards[i] {
-                    return Hand::compare_cards(&self.cards[i], &other.cards[i], self.wild)
+                    return Hand::compare_cards(&self.cards[i], &other.cards[i], self.wild);
                 }
             }
-            return Some(Ordering::Equal)
+            return Some(Ordering::Equal);
         }
-        return Some(self.class.cmp(&other.class))
+        return Some(self.class.cmp(&other.class));
     }
 }
 
 lazy_static! {
-    static ref FACE_VALUE: Vec<char> = vec![
-        '2', '3', '4', '5',
-        '6', '7', '8', '9',
-        'T', 'J', 'Q', 'K',
-        'A'];
+    static ref FACE_VALUE: Vec<char> =
+        vec!['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 }
 
 impl Hand {
@@ -95,38 +95,37 @@ impl Hand {
             match counter.get(&w) {
                 Some(n) => {
                     num_wild = *n;
-                    if num_wild == cards.len() as i32{
-                        return Hand::FIVE
+                    if num_wild == cards.len() as i32 {
+                        return Hand::FIVE;
                     }
                     counter.remove(&w);
                 }
-                None => ()
+                None => (),
             }
-        } 
-        let mut counts: Vec<(char, i32)> = counter.iter()
-            .map(|kv| (**kv.0, *kv.1 as i32))
-            .collect();
+        }
+        let mut counts: Vec<(char, i32)> =
+            counter.iter().map(|kv| (**kv.0, *kv.1 as i32)).collect();
         counts.sort_by(|a, b| b.1.cmp(&a.1));
-        counts[0].1 += num_wild; 
+        counts[0].1 += num_wild;
         if counts[0].1 == 5 {
             return Hand::FIVE;
         }
         if counts[0].1 == 4 {
-            return Hand::FOUR
+            return Hand::FOUR;
         }
         if counts[0].1 == 3 && counts[1].1 == 2 {
-            return Hand::HOUSE
+            return Hand::HOUSE;
         }
         if counts[0].1 == 3 {
-            return Hand::THREE
+            return Hand::THREE;
         }
         if counts[0].1 == 2 && counts[1].1 == 2 {
-            return Hand::TWO
+            return Hand::TWO;
         }
         if counts[0].1 == 2 {
-            return Hand::ONE
+            return Hand::ONE;
         }
-        return Hand::HIGH
+        return Hand::HIGH;
     }
 
     fn set_wild(mut self, wild: Option<char>) -> Self {
@@ -137,11 +136,12 @@ impl Hand {
 
     fn compare_cards(a: &char, b: &char, wild: Option<char>) -> Option<Ordering> {
         if a.is_ascii_digit() && b.is_ascii_digit() {
-            return a.partial_cmp(b)
+            return a.partial_cmp(b);
         }
         let mut values = FACE_VALUE.clone();
         if let Some(w) = wild {
-            values = values.iter()
+            values = values
+                .iter()
                 .map(|c| *c)
                 .filter(|c| *c != w)
                 .collect::<Vec<char>>();
@@ -150,9 +150,9 @@ impl Hand {
         let a_value = values.iter().position(|&r| r == *a);
         let b_value = values.iter().position(|&r| r == *b);
         if a_value.is_none() || b_value.is_none() {
-            return None
+            return None;
         }
-        return a_value.partial_cmp(&b_value)
+        return a_value.partial_cmp(&b_value);
     }
 }
 
@@ -165,7 +165,9 @@ impl Deck {
 
     fn score(&self) -> u32 {
         let sorted = self.judge();
-        sorted.hands.iter()
+        sorted
+            .hands
+            .iter()
             .enumerate()
             .map(|(i, h)| (i + 1) as u32 * h.bid)
             .sum()
@@ -173,7 +175,9 @@ impl Deck {
 
     fn set_wild(mut self, wild: Option<char>) -> Self {
         self.wild = wild;
-        self.hands = self.hands.iter()
+        self.hands = self
+            .hands
+            .iter()
             .map(|h| h.clone().set_wild(self.wild))
             .collect();
         self
@@ -236,12 +240,30 @@ QQQJA 483
 
     #[test]
     fn test_classify_wild() {
-        assert_eq!(Hand::classify_wild(&vec!['J', 'J', 'J', 'J', 'J'], Some('J')), Hand::FIVE);
-        assert_eq!(Hand::classify_wild(&vec!['J', 'J', 'K', 'K', 'K'], Some('J')), Hand::FIVE);
-        assert_eq!(Hand::classify_wild(&vec!['3', 'J', '3', '4', '4'], Some('J')), Hand::HOUSE);
-        assert_eq!(Hand::classify_wild(&vec!['3', 'J', '3', 'J', '4'], Some('J')), Hand::FOUR);
-        assert_eq!(Hand::classify_wild(&vec!['3', 'J', '3', '7', '4'], Some('J')), Hand::THREE);
-        assert_eq!(Hand::classify_wild(&vec!['3', 'J', 'K', '7', '4'], Some('J')), Hand::ONE);
+        assert_eq!(
+            Hand::classify_wild(&vec!['J', 'J', 'J', 'J', 'J'], Some('J')),
+            Hand::FIVE
+        );
+        assert_eq!(
+            Hand::classify_wild(&vec!['J', 'J', 'K', 'K', 'K'], Some('J')),
+            Hand::FIVE
+        );
+        assert_eq!(
+            Hand::classify_wild(&vec!['3', 'J', '3', '4', '4'], Some('J')),
+            Hand::HOUSE
+        );
+        assert_eq!(
+            Hand::classify_wild(&vec!['3', 'J', '3', 'J', '4'], Some('J')),
+            Hand::FOUR
+        );
+        assert_eq!(
+            Hand::classify_wild(&vec!['3', 'J', '3', '7', '4'], Some('J')),
+            Hand::THREE
+        );
+        assert_eq!(
+            Hand::classify_wild(&vec!['3', 'J', 'K', '7', '4'], Some('J')),
+            Hand::ONE
+        );
     }
 
     #[test]
@@ -249,11 +271,20 @@ QQQJA 483
         assert_eq!(Hand::compare_cards(&'2', &'3', None), Some(Ordering::Less));
         assert_eq!(Hand::compare_cards(&'2', &'Y', None), None);
         assert_eq!(Hand::compare_cards(&'W', &'Y', None), None);
-        assert_eq!(Hand::compare_cards(&'Q', &'5', None), Some(Ordering::Greater));
-        assert_eq!(Hand::compare_cards(&'Q', &'T', None), Some(Ordering::Greater));
+        assert_eq!(
+            Hand::compare_cards(&'Q', &'5', None),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(
+            Hand::compare_cards(&'Q', &'T', None),
+            Some(Ordering::Greater)
+        );
         assert_eq!(Hand::compare_cards(&'2', &'A', None), Some(Ordering::Less));
         assert_eq!(Hand::compare_cards(&'2', &'J', None), Some(Ordering::Less));
-        assert_eq!(Hand::compare_cards(&'2', &'J', Some('J')), Some(Ordering::Greater));
+        assert_eq!(
+            Hand::compare_cards(&'2', &'J', Some('J')),
+            Some(Ordering::Greater)
+        );
     }
 
     #[test]
