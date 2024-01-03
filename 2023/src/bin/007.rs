@@ -9,6 +9,7 @@ use std::collections::HashMap;
 #[derive(Clone)]
 struct Deck {
     hands: Vec<Hand>,
+    wild: Option<char>,
 }
 
 #[derive(Eq, PartialEq, Clone)]
@@ -16,6 +17,7 @@ struct Hand {
     cards: Vec<char>,
     bid: u32,
     class: u8,
+    wild: Option<char>,
 }
 
 impl From<&String> for Hand {
@@ -24,7 +26,7 @@ impl From<&String> for Hand {
             let bid = b.parse::<u32>().unwrap();
             let cards = c.chars().collect::<Vec<char>>();
             let class = Hand::classify(&cards);
-            Hand { cards, bid, class }
+            Hand { cards, bid, class, wild: None }
         } else {
             panic!("bad hand {line}");
         }
@@ -35,7 +37,8 @@ impl From<&Vec<String>> for Deck {
         Deck { 
             hands: lines.iter()
                 .map(|l| Hand::from(l))
-                .collect()
+                .collect(),
+            wild: None,
         }   
     }
 }
@@ -52,7 +55,7 @@ impl PartialOrd for Hand {
             let n = min(self.cards.len(), other.cards.len());
             for i in 0..n {
                 if self.cards[i] != other.cards[i] {
-                    return Hand::compare_cards(&self.cards[i], &other.cards[i])
+                    return Hand::compare_cards(&self.cards[i], &other.cards[i], self.wild)
                 }
             }
             return Some(Ordering::Equal)
@@ -60,6 +63,7 @@ impl PartialOrd for Hand {
         return Some(self.class.cmp(&other.class))
     }
 }
+
 lazy_static! {
     static ref FACE_VALUE: Vec<char> = vec![
         '2', '3', '4', '5',
@@ -78,14 +82,32 @@ impl Hand {
     const FIVE: u8 = 7;
 
     fn classify(cards: &Vec<char>) -> u8 {
+        Hand::classify_wild(cards, None)
+    }
+
+    fn classify_wild(cards: &Vec<char>, wild: Option<char>) -> u8 {
         let mut counter = HashMap::new();
         for card in cards {
             *counter.entry(card).or_insert(0) += 1;
         }
+        let mut num_wild = 0;
+        if let Some(w) = wild {
+            match counter.get(&w) {
+                Some(n) => {
+                    num_wild = *n;
+                    if num_wild == cards.len() as i32{
+                        return Hand::FIVE
+                    }
+                    counter.remove(&w);
+                }
+                None => ()
+            }
+        } 
         let mut counts: Vec<(char, i32)> = counter.iter()
             .map(|kv| (**kv.0, *kv.1 as i32))
             .collect();
         counts.sort_by(|a, b| b.1.cmp(&a.1));
+        counts[0].1 += num_wild; 
         if counts[0].1 == 5 {
             return Hand::FIVE;
         }
@@ -107,12 +129,26 @@ impl Hand {
         return Hand::HIGH
     }
 
-    fn compare_cards(a: &char, b: &char) -> Option<Ordering> {
+    fn set_wild(mut self, wild: Option<char>) -> Self {
+        self.class = Hand::classify_wild(&self.cards, wild);
+        self.wild = wild;
+        self
+    }
+
+    fn compare_cards(a: &char, b: &char, wild: Option<char>) -> Option<Ordering> {
         if a.is_ascii_digit() && b.is_ascii_digit() {
             return a.partial_cmp(b)
         }
-        let a_value = FACE_VALUE.iter().position(|&r| r == *a);
-        let b_value = FACE_VALUE.iter().position(|&r| r == *b);
+        let mut values = FACE_VALUE.clone();
+        if let Some(w) = wild {
+            values = values.iter()
+                .map(|c| *c)
+                .filter(|c| *c != w)
+                .collect::<Vec<char>>();
+            values.insert(0, w);
+        }
+        let a_value = values.iter().position(|&r| r == *a);
+        let b_value = values.iter().position(|&r| r == *b);
         if a_value.is_none() || b_value.is_none() {
             return None
         }
@@ -134,6 +170,14 @@ impl Deck {
             .map(|(i, h)| (i + 1) as u32 * h.bid)
             .sum()
     }
+
+    fn set_wild(mut self, wild: Option<char>) -> Self {
+        self.wild = wild;
+        self.hands = self.hands.iter()
+            .map(|h| h.clone().set_wild(self.wild))
+            .collect();
+        self
+    }
 }
 fn main() {
     let f = File::open("input/007.txt").expect("File Error");
@@ -144,6 +188,8 @@ fn main() {
         .collect();
     let deck = Deck::from(&lines);
     println!("score for this play is {}", deck.score());
+    let wild_deck = deck.set_wild(Some('J'));
+    println!("Jack's wild: {}", wild_deck.score());
 }
 
 #[cfg(test)]
@@ -189,13 +235,25 @@ QQQJA 483
     }
 
     #[test]
+    fn test_classify_wild() {
+        assert_eq!(Hand::classify_wild(&vec!['J', 'J', 'J', 'J', 'J'], Some('J')), Hand::FIVE);
+        assert_eq!(Hand::classify_wild(&vec!['J', 'J', 'K', 'K', 'K'], Some('J')), Hand::FIVE);
+        assert_eq!(Hand::classify_wild(&vec!['3', 'J', '3', '4', '4'], Some('J')), Hand::HOUSE);
+        assert_eq!(Hand::classify_wild(&vec!['3', 'J', '3', 'J', '4'], Some('J')), Hand::FOUR);
+        assert_eq!(Hand::classify_wild(&vec!['3', 'J', '3', '7', '4'], Some('J')), Hand::THREE);
+        assert_eq!(Hand::classify_wild(&vec!['3', 'J', 'K', '7', '4'], Some('J')), Hand::ONE);
+    }
+
+    #[test]
     fn test_cmp_card() {
-        assert_eq!(Hand::compare_cards(&'2', &'3'), Some(Ordering::Less));
-        assert_eq!(Hand::compare_cards(&'2', &'Y'), None);
-        assert_eq!(Hand::compare_cards(&'W', &'Y'), None);
-        assert_eq!(Hand::compare_cards(&'Q', &'5'), Some(Ordering::Greater));
-        assert_eq!(Hand::compare_cards(&'Q', &'T'), Some(Ordering::Greater));
-        assert_eq!(Hand::compare_cards(&'2', &'A'), Some(Ordering::Less));
+        assert_eq!(Hand::compare_cards(&'2', &'3', None), Some(Ordering::Less));
+        assert_eq!(Hand::compare_cards(&'2', &'Y', None), None);
+        assert_eq!(Hand::compare_cards(&'W', &'Y', None), None);
+        assert_eq!(Hand::compare_cards(&'Q', &'5', None), Some(Ordering::Greater));
+        assert_eq!(Hand::compare_cards(&'Q', &'T', None), Some(Ordering::Greater));
+        assert_eq!(Hand::compare_cards(&'2', &'A', None), Some(Ordering::Less));
+        assert_eq!(Hand::compare_cards(&'2', &'J', None), Some(Ordering::Less));
+        assert_eq!(Hand::compare_cards(&'2', &'J', Some('J')), Some(Ordering::Greater));
     }
 
     #[test]
@@ -211,6 +269,27 @@ QQQJA 483
         assert!(deck.hands[2] > deck.hands[3]); // KK677 > KTJJT
         assert!(deck.hands[4] > deck.hands[2]); // QQQJA > KK677
         assert!(deck.hands[4] > deck.hands[1]); // QQQJA > T55J5
+        let a = Hand::from(&"KTJJT 220".to_string());
+        let b = Hand::from(&"KJTJT 220".to_string());
+        assert!(a < b); // KTJJT < KJTJT
+    }
+
+    #[test]
+    fn test_cmp_wild_hand() {
+        let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+        let deck = Deck::from(&lines).set_wild(Some('J'));
+        assert!(deck.hands[0] == deck.hands[0]);
+        assert!(deck.hands[1] == deck.hands[1]);
+        assert!(deck.hands[2] == deck.hands[2]);
+        assert!(deck.hands[3] == deck.hands[3]);
+        assert!(deck.hands[4] == deck.hands[4]);
+        assert!(deck.hands[0] < deck.hands[2]); // 32T3K < KK677
+        assert!(deck.hands[2] < deck.hands[3]); // KK677 < KTJJT (KTTTT)
+        assert!(deck.hands[4] > deck.hands[2]); // QQQJA > KK677
+        assert!(deck.hands[4] > deck.hands[1]); // QQQJA > T55J5
+        let a = Hand::from(&"KTJJT 220".to_string()).set_wild(Some('J'));
+        let b = Hand::from(&"KJTJT 220".to_string()).set_wild(Some('J'));
+        assert!(a > b); // KTJJT > KJTJT
     }
 
     #[test]
@@ -230,5 +309,12 @@ QQQJA 483
         let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let deck = Deck::from(&lines);
         assert_eq!(deck.score(), 6440);
+    }
+
+    #[test]
+    fn test_wild_round() {
+        let lines = SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+        let wild_deck = Deck::from(&lines).set_wild(Some('J'));
+        assert_eq!(wild_deck.score(), 5905);
     }
 }
