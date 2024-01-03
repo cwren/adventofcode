@@ -40,7 +40,7 @@ impl From<&String> for Hand {
 impl From<&Vec<String>> for Deck {
     fn from(lines: &Vec<String>) -> Self {
         Deck {
-            hands: lines.iter().map(|l| Hand::from(l)).collect(),
+            hands: lines.iter().map(Hand::from).collect(),
             wild: None,
         }
     }
@@ -63,7 +63,7 @@ impl PartialOrd for Hand {
             }
             return Some(Ordering::Equal);
         }
-        return Some(self.class.cmp(&other.class));
+        Some(self.class.cmp(&other.class))
     }
 }
 
@@ -104,7 +104,7 @@ impl Hand {
             }
         }
         let mut counts: Vec<(char, i32)> =
-            counter.iter().map(|kv| (**kv.0, *kv.1 as i32)).collect();
+            counter.iter().map(|kv| (**kv.0, *kv.1)).collect();
         counts.sort_by(|a, b| b.1.cmp(&a.1));
         counts[0].1 += num_wild;
         if counts[0].1 == 5 {
@@ -125,7 +125,7 @@ impl Hand {
         if counts[0].1 == 2 {
             return Hand::ONE;
         }
-        return Hand::HIGH;
+        Hand::HIGH
     }
 
     fn set_wild(mut self, wild: Option<char>) -> Self {
@@ -141,8 +141,7 @@ impl Hand {
         let mut values = FACE_VALUE.clone();
         if let Some(w) = wild {
             values = values
-                .iter()
-                .map(|c| *c)
+                .iter().copied()
                 .filter(|c| *c != w)
                 .collect::<Vec<char>>();
             values.insert(0, w);
@@ -152,7 +151,7 @@ impl Hand {
         if a_value.is_none() || b_value.is_none() {
             return None;
         }
-        return a_value.partial_cmp(&b_value);
+        a_value.partial_cmp(&b_value)
     }
 }
 
