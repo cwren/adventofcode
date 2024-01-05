@@ -7,7 +7,6 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum Move {
     LEFT,
@@ -26,11 +25,14 @@ struct Map {
 impl From<String> for DanceCard {
     fn from(line: String) -> Self {
         let v = line
-          .chars()
-          .filter(|c| *c == 'R' || *c == 'L')
-          .map(|c| if c == 'L' { Move::LEFT } else { Move::RIGHT} )
-          .collect::<Vec<Move>>();
-        DanceCard { moves: VecDeque::from(v.clone()), orininal: v }
+            .chars()
+            .filter(|c| *c == 'R' || *c == 'L')
+            .map(|c| if c == 'L' { Move::LEFT } else { Move::RIGHT })
+            .collect::<Vec<Move>>();
+        DanceCard {
+            moves: VecDeque::from(v.clone()),
+            orininal: v,
+        }
     }
 }
 
@@ -45,17 +47,17 @@ impl From<Vec<String>> for Map {
         let card = DanceCard::from(liter.next().expect("missing first line").to_owned());
         liter.next().expect("missing second line");
         let nodes = liter
-          .map(|line| {
-            if let Some(cap) = NODE_RE.captures(line) {
-                let key = cap.get(1).unwrap().as_str().to_string();
-                let lft = cap.get(2).unwrap().as_str().to_string();
-                let rgt = cap.get(3).unwrap().as_str().to_string();
-                (key, (lft, rgt))
-            } else {
-                panic!("malformed line: {line}");
-            }
-          })
-          .collect::<HashMap<String, (String, String)>>();
+            .map(|line| {
+                if let Some(cap) = NODE_RE.captures(line) {
+                    let key = cap.get(1).unwrap().as_str().to_string();
+                    let lft = cap.get(2).unwrap().as_str().to_string();
+                    let rgt = cap.get(3).unwrap().as_str().to_string();
+                    (key, (lft, rgt))
+                } else {
+                    panic!("malformed line: {line}");
+                }
+            })
+            .collect::<HashMap<String, (String, String)>>();
         Map { card, nodes }
     }
 }
@@ -72,7 +74,6 @@ impl DanceCard {
 }
 
 impl Map {
-
     fn walk(&mut self) -> VecDeque<String> {
         self.do_walk("AAA")
     }
@@ -85,7 +86,7 @@ impl Map {
             let fork = self.nodes.get(here).unwrap();
             match self.card.next() {
                 Move::LEFT => here = &fork.0,
-                Move::RIGHT => here = &fork.1,  
+                Move::RIGHT => here = &fork.1,
             }
             path.push_back(here.to_owned());
         }
