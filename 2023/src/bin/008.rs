@@ -82,7 +82,7 @@ impl Map {
         let mut path = VecDeque::new();
         let mut here = start;
         path.push_back(here.to_owned());
-        while !here.ends_with("Z") {
+        while !here.ends_with('Z') {
             let fork = self.nodes.get(here).unwrap();
             match self.card.next() {
                 Move::LEFT => here = &fork.0,
@@ -96,7 +96,7 @@ impl Map {
     fn ghost_walk(&mut self) -> usize {
         let mut starts = Vec::new();
         for key in self.nodes.keys() {
-            if key.ends_with("A") {
+            if key.ends_with('A') {
                 starts.push(key.to_owned());
             }
         }
@@ -105,7 +105,7 @@ impl Map {
             self.card.reset();
             loop_lengths.push(self.do_walk(&start).len() - 1);
         }
-        lcmx(&loop_lengths).unwrap() as usize
+        lcmx(&loop_lengths).unwrap()
     }
 }
 fn main() {
