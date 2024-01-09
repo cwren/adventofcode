@@ -13,19 +13,16 @@ struct Sensor {
 impl From<&String> for Sensor {
     fn from(line: &String) -> Self {
         let data = line
-          .split(" ")
-          .map(|n| n.parse::<i32>().expect("malformed integer"))
-          .collect();
+            .split(" ")
+            .map(|n| n.parse::<i32>().expect("malformed integer"))
+            .collect();
         Sensor { data }
     }
 }
 
 impl From<Vec<String>> for Dataset {
     fn from(lines: Vec<String>) -> Self {
-        let histories = lines
-            .iter()
-            .map(Sensor::from)
-            .collect();
+        let histories = lines.iter().map(Sensor::from).collect();
         Dataset { sensors: histories }
     }
 }
@@ -34,22 +31,29 @@ impl Sensor {
     fn predict(&self) -> (i32, i32) {
         let mut stack = Vec::new();
         stack.push(self.data.clone());
-        while stack.last().expect("stack underrun").iter().any(|n| *n != 0) { 
-            let next = stack.last().expect("stack underrun")
+        while stack
+            .last()
+            .expect("stack underrun")
+            .iter()
+            .any(|n| *n != 0)
+        {
+            let next = stack
+                .last()
+                .expect("stack underrun")
                 .windows(2)
-                .map(|n| n[1] - n[0] )
+                .map(|n| n[1] - n[0])
                 .collect();
             stack.push(next);
         }
         (
             stack
                 .iter()
-                .map (|v| v.last().expect("stacked vecs should not be zero length"))
+                .map(|v| v.last().expect("stacked vecs should not be zero length"))
                 .sum(),
             stack
                 .iter()
                 .enumerate()
-                .map(|(i, v)| { if i % 2 == 0 { v[0] } else { -v[0] } } )
+                .map(|(i, v)| if i % 2 == 0 { v[0] } else { -v[0] })
                 .sum::<i32>(),
         )
     }
@@ -57,10 +61,7 @@ impl Sensor {
 
 impl Dataset {
     fn analyze(&self) -> (i32, i32) {
-        let predictions: Vec<(i32, i32)> = self.sensors
-            .iter()
-            .map(Sensor::predict)
-            .collect();
+        let predictions: Vec<(i32, i32)> = self.sensors.iter().map(Sensor::predict).collect();
         (
             predictions.iter().map(|x| x.0).sum(),
             predictions.iter().map(|x| x.1).sum(),
