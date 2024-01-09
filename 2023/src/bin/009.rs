@@ -13,7 +13,7 @@ struct Sensor {
 impl From<&String> for Sensor {
     fn from(line: &String) -> Self {
         let data = line
-            .split(" ")
+            .split(' ')
             .map(|n| n.parse::<i32>().expect("malformed integer"))
             .collect();
         Sensor { data }

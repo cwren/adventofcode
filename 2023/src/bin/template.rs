@@ -5,7 +5,7 @@ use std::io::BufReader;
 fn main() {
     let f = File::open("input/008.txt").expect("File Error");
     let reader = BufReader::new(f);
-    let lines: Vec<_> = reader
+    let _lines: Vec<_> = reader
         .lines()
         .map(|l| l.expect("Could not read line"))
         .collect();
@@ -18,6 +18,6 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let lines = SAMPLE1.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+        let _lines = SAMPLE1.lines().map(|s| s.to_string()).collect::<Vec<_>>();
     }
 }
