@@ -31,7 +31,7 @@ impl From<Vec<String>> for Dataset {
 }
 
 impl Sensor {
-    fn predict(&self) -> i32 {
+    fn predict(&self) -> (i32, i32) {
         let mut stack = Vec::new();
         stack.push(self.data.clone());
         while stack.last().expect("stack underrun").iter().any(|n| *n != 0) { 
@@ -41,19 +41,30 @@ impl Sensor {
                 .collect();
             stack.push(next);
         }
-        stack
-            .iter()
-            .map (|v| v.last().expect("stacked vecs should not be zero length"))
-            .sum()
+        (
+            stack
+                .iter()
+                .map (|v| v.last().expect("stacked vecs should not be zero length"))
+                .sum(),
+            stack
+                .iter()
+                .enumerate()
+                .map(|(i, v)| { if i % 2 == 0 { v[0] } else { -v[0] } } )
+                .sum::<i32>(),
+        )
     }
 }
 
 impl Dataset {
-    fn analyze(&self) -> i32 {
-        self.sensors
+    fn analyze(&self) -> (i32, i32) {
+        let predictions: Vec<(i32, i32)> = self.sensors
             .iter()
             .map(Sensor::predict)
-            .sum()
+            .collect();
+        (
+            predictions.iter().map(|x| x.0).sum(),
+            predictions.iter().map(|x| x.1).sum(),
+        )
     }
 }
 
@@ -63,9 +74,11 @@ fn main() {
     let lines: Vec<_> = reader
         .lines()
         .map(|l| l.expect("Could not read line"))
-        .collect();;
+        .collect();
     let dataset = Dataset::from(lines);
-    println!("the result of analysis is: {}", dataset.analyze());
+    let analysis = dataset.analyze();
+    println!("the result of prediciton is: {}", analysis.0);
+    println!("the result of revision is: {}", analysis.1);
 }
 
 #[cfg(test)]
@@ -92,15 +105,24 @@ mod tests {
     fn test_predict() {
         let lines = SAMPLE1.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let dataset = Dataset::from(lines);
-        assert_eq!(dataset.sensors[0].predict(), 18);
-        assert_eq!(dataset.sensors[1].predict(), 28);
-        assert_eq!(dataset.sensors[2].predict(), 68);
+        assert_eq!(dataset.sensors[0].predict().0, 18);
+        assert_eq!(dataset.sensors[1].predict().0, 28);
+        assert_eq!(dataset.sensors[2].predict().0, 68);
+    }
+
+    #[test]
+    fn test_revision() {
+        let lines = SAMPLE1.lines().map(|s| s.to_string()).collect::<Vec<_>>();
+        let dataset = Dataset::from(lines);
+        assert_eq!(dataset.sensors[0].predict().1, -3);
+        assert_eq!(dataset.sensors[1].predict().1, 0);
+        assert_eq!(dataset.sensors[2].predict().1, 5);
     }
 
     #[test]
     fn test_analyze() {
         let lines = SAMPLE1.lines().map(|s| s.to_string()).collect::<Vec<_>>();
         let dataset = Dataset::from(lines);
-        assert_eq!(dataset.analyze(), 114);
+        assert_eq!(dataset.analyze(), (114, 2));
     }
 }
