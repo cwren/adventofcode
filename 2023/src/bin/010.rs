@@ -1,9 +1,9 @@
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::iter;
-use lazy_static::lazy_static;
 
 type Coord = (i32, i32);
 
@@ -28,8 +28,7 @@ enum Dir {
 }
 
 lazy_static! {
-    static ref TILE_MAP: HashMap<char, Tile> =
-    HashMap::from([
+    static ref TILE_MAP: HashMap<char, Tile> = HashMap::from([
         ('|', Tile::NS),
         ('-', Tile::EW),
         ('L', Tile::NE),
@@ -44,7 +43,7 @@ lazy_static! {
     static ref EASTERLY: Vec<Tile> = Vec::from(vec![Tile::NE, Tile::SE, Tile::EW]);
     static ref WESTERLY: Vec<Tile> = Vec::from(vec![Tile::SW, Tile::NW, Tile::EW]);
 }
-struct Map { 
+struct Map {
     tiles: Vec<Vec<Tile>>,
     start: Coord,
     size: Coord,
@@ -71,7 +70,7 @@ impl Indexable<Tile> for Vec<Vec<Tile>> {
         if j < self.len() {
             let row = &self[j];
             if i < row.len() {
-                return Some(row[i])
+                return Some(row[i]);
             }
         }
         None
@@ -90,9 +89,9 @@ impl From<Vec<String>> for Map {
             .collect();
         let mut start = (0i32, 0i32);
         let mut size = (0i32, 0i32);
-        for (j,  row) in tiles.iter().enumerate() {
+        for (j, row) in tiles.iter().enumerate() {
             size.1 = size.1.max(j as i32 + 1);
-            for (i,  t) in row.iter().enumerate() {
+            for (i, t) in row.iter().enumerate() {
                 size.0 = size.0.max(i as i32 + 1);
                 if *t == Tile::START {
                     start = (i as i32, j as i32);
@@ -100,7 +99,10 @@ impl From<Vec<String>> for Map {
             }
         }
         // assumed square
-        assert!(tiles.iter().map(|row| row.len() as i32 == size.0).all(|b| b));
+        assert!(tiles
+            .iter()
+            .map(|row| row.len() as i32 == size.0)
+            .all(|b| b));
         Map { tiles, start, size }
     }
 }
@@ -135,37 +137,29 @@ impl Map {
             path.push(here);
             let tile = self.tiles.get(here.0, here.1);
             (from, here) = match from {
-                Dir::NORTH => { 
-                    match tile {
-                        Tile::NE => (Dir::WEST, (here.0 + 1, here.1)),
-                        Tile::NS => (Dir::NORTH, (here.0, here.1 + 1)),
-                        Tile::NW => (Dir::EAST, (here.0 - 1, here.1)),
-                        _ => panic!("pipes do not match"),
-                    }
+                Dir::NORTH => match tile {
+                    Tile::NE => (Dir::WEST, (here.0 + 1, here.1)),
+                    Tile::NS => (Dir::NORTH, (here.0, here.1 + 1)),
+                    Tile::NW => (Dir::EAST, (here.0 - 1, here.1)),
+                    _ => panic!("pipes do not match"),
                 },
-                Dir::SOUTH => { 
-                    match tile {
-                        Tile::SE => (Dir::WEST, (here.0 + 1, here.1)),
-                        Tile::NS => (Dir::SOUTH, (here.0, here.1 - 1)),
-                        Tile::SW => (Dir::EAST, (here.0 - 1, here.1)),
-                        _ => panic!("pipes do not match"),
-                    }
+                Dir::SOUTH => match tile {
+                    Tile::SE => (Dir::WEST, (here.0 + 1, here.1)),
+                    Tile::NS => (Dir::SOUTH, (here.0, here.1 - 1)),
+                    Tile::SW => (Dir::EAST, (here.0 - 1, here.1)),
+                    _ => panic!("pipes do not match"),
                 },
-                Dir::EAST => { 
-                    match tile {
-                        Tile::NE => (Dir::SOUTH, (here.0, here.1 - 1)),
-                        Tile::EW => (Dir::EAST, (here.0 - 1, here.1)),
-                        Tile::SE => (Dir::NORTH, (here.0, here.1 + 1)),
-                        _ => panic!("pipes do not match"),
-                    }
+                Dir::EAST => match tile {
+                    Tile::NE => (Dir::SOUTH, (here.0, here.1 - 1)),
+                    Tile::EW => (Dir::EAST, (here.0 - 1, here.1)),
+                    Tile::SE => (Dir::NORTH, (here.0, here.1 + 1)),
+                    _ => panic!("pipes do not match"),
                 },
-                Dir::WEST => { 
-                    match tile {
-                        Tile::NW => (Dir::SOUTH, (here.0, here.1 - 1)),
-                        Tile::EW => (Dir::WEST, (here.0 + 1, here.1)),
-                        Tile::SW => (Dir::NORTH, (here.0, here.1 + 1)),
-                        _ => panic!("pipes do not match"),
-                    }
+                Dir::WEST => match tile {
+                    Tile::NW => (Dir::SOUTH, (here.0, here.1 - 1)),
+                    Tile::EW => (Dir::WEST, (here.0 + 1, here.1)),
+                    Tile::SW => (Dir::NORTH, (here.0, here.1 + 1)),
+                    _ => panic!("pipes do not match"),
                 },
             }
         }
@@ -209,12 +203,11 @@ impl Map {
     }
 
     fn contained_in(&self, path: Vec<Coord>) -> Vec<Coord> {
-        let mut windings: Vec<Vec<usize>> =
-            iter::repeat_with(|| vec![0; self.size.0 as usize])
-                .take(self.size.1 as usize)
-                .collect();
-        for (j,  row) in self.tiles.iter().enumerate() {
-            for (i,  t) in row.iter().enumerate() {
+        let mut windings: Vec<Vec<usize>> = iter::repeat_with(|| vec![0; self.size.0 as usize])
+            .take(self.size.1 as usize)
+            .collect();
+        for (j, row) in self.tiles.iter().enumerate() {
+            for (i, t) in row.iter().enumerate() {
                 windings[j][i] = Map::score(t);
             }
         }
@@ -247,14 +240,13 @@ impl Map {
         let mut contained = Vec::new();
         for j in 0..self.size.1 as usize {
             for i in 0..self.size.0 as usize {
-                if windings[j][i] % 2 == 1 && !path.contains(&(i as i32, j as i32)){
+                if windings[j][i] % 2 == 1 && !path.contains(&(i as i32, j as i32)) {
                     contained.push((i as i32, j as i32))
                 }
             }
         }
         contained
     }
-
 }
 fn main() {
     let f = File::open("input/010.txt").expect("File Error");
@@ -370,7 +362,7 @@ LJ.LJ
         assert_eq!(area, 4);
     }
 
-const SAMPLE4: &str = r#".F----7F7F7F7F-7....
+    const SAMPLE4: &str = r#".F----7F7F7F7F-7....
 .|F--7||||||||FJ....
 .||.FJ||||||||L7....
 FJL7L7LJLJ||LJ.L-7..
@@ -400,7 +392,6 @@ L--J.L7...LJS7F-7L7.
         let area = map.contained_in(path).len();
         assert_eq!(area, 8);
     }
-
 
     const SAMPLE5: &str = r#"FF7FSF7F7F7F7F7F---7
 L|LJ||||||||||||F--J
@@ -432,5 +423,4 @@ L7JLJL-JLJLJL--JLJ.L
         let area = map.contained_in(path).len();
         assert_eq!(area, 10);
     }
-
 }
