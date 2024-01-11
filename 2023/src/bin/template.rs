@@ -3,7 +3,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 
 fn main() {
-    let f = File::open("input/008.txt").expect("File Error");
+    let f = File::open("input/DAY.txt").expect("File Error");
     let reader = BufReader::new(f);
     let _lines: Vec<_> = reader
         .lines()

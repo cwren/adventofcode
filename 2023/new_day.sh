@@ -45,5 +45,5 @@ cat <<EOF >> .vscode/launch.head
 }
 EOF
 mv .vscode/launch.head .vscode/launch.json 
-cp src/bin/template.rs src/bin/${day}.rs 
+sed -e"s/DAY/$day/" < src/bin/template.rs > src/bin/${day}.rs
 git add src/bin/${day}.rs input/${day}.txt
