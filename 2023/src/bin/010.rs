@@ -38,10 +38,10 @@ lazy_static! {
         ('S', Tile::START),
         ('.', Tile::NONE),
     ]);
-    static ref SOUTHERLY: Vec<Tile> = Vec::from(vec![Tile::SW, Tile::SE, Tile::NS]);
-    static ref NORTHERLY: Vec<Tile> = Vec::from(vec![Tile::NW, Tile::NE, Tile::NS]);
-    static ref EASTERLY: Vec<Tile> = Vec::from(vec![Tile::NE, Tile::SE, Tile::EW]);
-    static ref WESTERLY: Vec<Tile> = Vec::from(vec![Tile::SW, Tile::NW, Tile::EW]);
+    static ref SOUTHERLY: Vec<Tile> = vec![Tile::SW, Tile::SE, Tile::NS];
+    static ref NORTHERLY: Vec<Tile> = vec![Tile::NW, Tile::NE, Tile::NS];
+    static ref EASTERLY: Vec<Tile> = vec![Tile::NE, Tile::SE, Tile::EW];
+    static ref WESTERLY: Vec<Tile> = vec![Tile::SW, Tile::NW, Tile::EW];
 }
 struct Map {
     tiles: Vec<Vec<Tile>>,
