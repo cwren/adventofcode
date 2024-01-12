@@ -65,10 +65,10 @@ mod tests {
 
     #[test]
     fn test_win_race() {
-        assert_eq!(win_race(&SHORTS[0], 1), false);
-        assert_eq!(win_race(&SHORTS[0], 2), true);
-        assert_eq!(win_race(&SHORTS[0], 5), true);
-        assert_eq!(win_race(&SHORTS[0], 6), false);
+        assert!(!win_race(&SHORTS[0], 1));
+        assert!(win_race(&SHORTS[0], 2));
+        assert!(win_race(&SHORTS[0], 5));
+        assert!(!win_race(&SHORTS[0], 6));
     }
 
     #[test]

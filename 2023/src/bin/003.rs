@@ -262,41 +262,37 @@ mod tests {
     #[test]
     fn test_adjacent() {
         let schematic = load_schematic(SAMPLE.lines().map(|s| s.to_string()).collect::<Vec<_>>());
-        assert_eq!(
+        assert!(
             Number {
                 v: 467,
                 p: (0, 0),
                 n: 3
             }
-            .adjacent(&schematic),
-            true
+            .adjacent(&schematic)
         );
-        assert_eq!(
+        assert!(
             Number {
                 v: 35,
                 p: (2, 2),
                 n: 2
             }
-            .adjacent(&schematic),
-            true
+            .adjacent(&schematic)
         );
-        assert_eq!(
-            Number {
+        assert!(
+            !Number {
                 v: 114,
                 p: (0, 6),
                 n: 3
             }
-            .adjacent(&schematic),
-            false
+            .adjacent(&schematic)
         );
-        assert_eq!(
-            Number {
+        assert!(
+            !Number {
                 v: 58,
                 p: (5, 7),
                 n: 2
             }
-            .adjacent(&schematic),
-            false
+            .adjacent(&schematic)
         );
     }
 

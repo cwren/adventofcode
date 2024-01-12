@@ -16,11 +16,11 @@ mod tests {
         let c = Interval::new(3, 9);
         assert_eq!(c.upper(), 9);
         assert_eq!(c.lower(), 3);
-        assert_eq!(a.is_disjoint(&b), true);
-        assert_eq!(a.is_disjoint(&c), false);
-        assert_eq!(a.overlap(&c), true);
-        assert_eq!(c.is_disjoint(&b), true);
-        assert_eq!(c.overlap(&b), false);
+        assert!(a.is_disjoint(&b));
+        assert!(!a.is_disjoint(&c));
+        assert!(a.overlap(&c));
+        assert!(c.is_disjoint(&b));
+        assert!(!c.overlap(&b));
     }
     
     #[test]
@@ -50,7 +50,7 @@ mod tests {
         let d = a.union(&b);
         assert_eq!(d.interval_count(), 1);
         assert_eq!(d, IntervalSet::new(0, 7));
-        assert_eq!(a.intersection(&b).is_empty(), true);
+        assert!(a.intersection(&b).is_empty());
 
         let e = a.union(&vec![(10, 12)].to_interval_set());
         assert_eq!(e.interval_count(), 2);
@@ -59,10 +59,10 @@ mod tests {
         
         let f = IntervalSet::new(2, 3);
         assert_eq!(a.difference(&f), vec![(0, 1), (4, 5)].to_interval_set());
-        assert_eq!(f.difference(&a).is_empty(), true);
+        assert!(f.difference(&a).is_empty());
         assert_eq!(a.intersection(&f), vec![(2, 3)].to_interval_set());
-        assert_eq!(f.overlap(&vec![(2, 3)].to_interval_set()), true);
-        assert_eq!(f.overlap(&vec![(0, 1)].to_interval_set()), false);
-        assert_eq!(f.overlap(&vec![(4, 5)].to_interval_set()), false);
+        assert!(f.overlap(&vec![(2, 3)].to_interval_set()));
+        assert!(!f.overlap(&vec![(0, 1)].to_interval_set()));
+        assert!(!f.overlap(&vec![(4, 5)].to_interval_set()));
     }
 }
